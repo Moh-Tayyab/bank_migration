@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  migration-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../uploads:/app/uploads
+      - ../output:/app/output
+      - ../logs:/app/logs
+      - ../canonical_store:/app/canonical_store
+      - ../config:/app/config
+    environment:
+      - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:-}
+    restart: unless-stopped

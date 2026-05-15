@@ -1,0 +1,75 @@
+from typing import Dict, List, Optional
+from .models import BankSchema, MappingRule
+from .schema_version import SchemaVersionManager
+import json
+import os
+
+
+class BankRegistry:
+    def __init__(self, config_dir: str = "config/bank_schemas"):
+        self._config_dir = config_dir
+        self._version_manager = SchemaVersionManager(config_dir)
+        self._schemas: Dict[str, Dict[str, BankSchema]] = {}
+        self._load_all()
+
+    def _load_all(self):
+        os.makedirs(self._config_dir, exist_ok=True)
+        for bank in os.listdir(self._config_dir):
+            bank_dir = os.path.join(self._config_dir, bank)
+            if not os.path.isdir(bank_dir):
+                continue
+            for version_file in os.listdir(bank_dir):
+                if not version_file.endswith(".json"):
+                    continue
+                version = version_file.replace(".json", "")
+                filepath = os.path.join(bank_dir, version_file)
+                with open(filepath) as f:
+                    data = json.load(f)
+                schema = BankSchema(
+                    bank_name=bank,
+                    version=version,
+                    fields=data.get("fields", {}),
+                    mappings=[MappingRule(**m) for m in data.get("mappings", [])],
+                    masking_rules=data.get("masking_rules", {}),
+                )
+                if bank not in self._schemas:
+                    self._schemas[bank] = {}
+                self._schemas[bank][version] = schema
+
+    def register_bank(self, bank: str, schema: BankSchema) -> str:
+        path = self._version_manager.save_schema(
+            bank, schema.version,
+            {
+                "fields": schema.fields,
+                "mappings": [m.model_dump() for m in schema.mappings],
+                "masking_rules": schema.masking_rules,
+            },
+        )
+        if bank not in self._schemas:
+            self._schemas[bank] = {}
+        self._schemas[bank][schema.version] = schema
+        return path
+
+    def get_schema(self, bank: str, version: str = "latest") -> Optional[BankSchema]:
+        versions = self._schemas.get(bank, {})
+        if not versions:
+            return None
+        if version == "latest":
+            return list(versions.values())[-1]
+        return versions.get(version)
+
+    def get_mappings(self, source_bank: str, target_bank: str) -> List[MappingRule]:
+        source = self.get_schema(source_bank)
+        target = self.get_schema(target_bank)
+        if not target:
+            return []
+        return target.mappings
+
+    def list_banks(self) -> List[str]:
+        return list(self._schemas.keys())
+
+    def get_masking_rules(self, bank: str, version: str = "latest") -> Dict[str, str]:
+        schema = self.get_schema(bank, version)
+        if not schema:
+            return {}
+        return schema.masking_rules
