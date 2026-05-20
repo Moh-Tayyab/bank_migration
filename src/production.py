@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json
 from datetime import datetime
-from .models import MigrationResult, FileFormat, AuditEvent
+from .models import MigrationResult, MultiBankMigrationResult, FileFormat, AuditEvent
 from .transform import Transformer
 from .detector import FormatDetector
 from .validator import Validator
@@ -23,7 +23,7 @@ class PipelineOrchestrator:
         self._registry = BankRegistry(str(settings.bank_schema_dir))
         self._audit_logger = AuditLogger()
         self._transformer = Transformer(
-            audit_logger=self._audit_logger,
+            audit=self._audit_logger,
         )
 
     def migrate_file(
@@ -69,6 +69,48 @@ class PipelineOrchestrator:
             details=f"Output written to {output_path}",
         )
         return result
+
+    def migrate_file_multi(
+        self,
+        filepath: str,
+        source_bank: str,
+        target_banks: List[str],
+        output_format: Optional[str] = None,
+    ) -> MultiBankMigrationResult:
+        results: List[MigrationResult] = []
+        all_success = True
+        for target_bank in target_banks:
+            result = self.migrate_file(filepath, source_bank, target_bank, output_format)
+            results.append(result)
+            if not result.success:
+                all_success = False
+        return MultiBankMigrationResult(
+            success=all_success,
+            source_bank=source_bank,
+            target_banks=target_banks,
+            results=results,
+        )
+
+    def migrate_data_multi(
+        self,
+        records: List[Dict[str, Any]],
+        source_bank: str,
+        target_banks: List[str],
+        output_format: Optional[str] = None,
+    ) -> MultiBankMigrationResult:
+        results: List[MigrationResult] = []
+        all_success = True
+        for target_bank in target_banks:
+            result = self.migrate_data(records, source_bank, target_bank, output_format)
+            results.append(result)
+            if not result.success:
+                all_success = False
+        return MultiBankMigrationResult(
+            success=all_success,
+            source_bank=source_bank,
+            target_banks=target_banks,
+            results=results,
+        )
 
     def get_banks(self) -> List[str]:
         return self._registry.list_banks()

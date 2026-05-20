@@ -15,9 +15,12 @@ class Rule:
 
 
 class RulesEngine:
-    def __init__(self):
+    def __init__(self, rules_engine: Optional['RulesEngine'] = None):
         self._global_rules: List[Rule] = []
         self._bank_rules: Dict[str, List[Rule]] = {}
+        if rules_engine is not None:
+            self._global_rules = list(rules_engine._global_rules)
+            self._bank_rules = dict(rules_engine._bank_rules)
 
     def add_rule(self, rule: Rule, bank: str = ""):
         if bank:

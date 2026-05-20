@@ -1,72 +1,90 @@
-
+from typing import List
 from celery import shared_task
 from .celery_app import app
-import sys
-import os
+from src.production import PipelineOrchestrator
+from src.config import settings
+import logging
 
-sys.path.append(os.getcwd())
-
-from src.transform import Transformer
-from src.detector import FormatDetector
-from src.parser import Parser
-from src.validator import Validator
-from src.schema_mapper import SchemaMapper
-from src.rules_engine import RulesEngine, build_standard_rules
-from src.security import SecurityMasker
-from src.audit_logger import AuditLogger
-from src.canonical_store import CanonicalStore
-from src.transaction_rollback import TransactionManager
-from src.registry import BankRegistry
-from .tracker import MigrationTracker
+logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
-def process_migration_chunk(self, chunk_id: str, records: list, source_bank: str, target_bank: str, migration_id: str = "default"):
+def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: str, output_format: str = "json"):
     """
-    Task to process a chunk of records asynchronously and update the tracker.
+    The primary background task that handles the entire ETL pipeline for a file.
     """
-    print(f"Worker processing chunk {chunk_id} for migration {migration_id}...")
+    logger.info(f"Starting background migration for file: {filepath}")
     
-    # 1. Setup Pipeline
-    audit = AuditLogger()
-    canonical = CanonicalStore()
-    txn = TransactionManager()
-    parser = Parser()
-    validator = Validator()
-    mapper = SchemaMapper()
-    rules = RulesEngine(build_standard_rules())
-    masker = SecurityMasker(audit_logger=audit)
-    registry = BankRegistry()
+    try:
+        # Initialize the orchestrator within the worker process
+        orchestrator = PipelineOrchestrator()
+        
+        # Execute the migration
+        result = orchestrator.migrate_file(
+            filepath=filepath, 
+            source_bank=source_bank, 
+            target_bank=target_bank, 
+            output_format=output_format
+        )
+        
+        return {
+            "success": result.success,
+            "total_records": result.total_records,
+            "processed": result.processed,
+            "failed": result.failed,
+            "output_path": result.output_path,
+            "error": result.error,
+        }
+    except Exception as e:
+        logger.error(f"Migration failed for {filepath}: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "total_records": 0,
+            "processed": 0,
+            "failed": 0,
+            "output_path": None
+        }
+
+@shared_task(bind=True)
+def run_multi_migration_task(self, filepath_or_records, source_bank: str, target_banks: List[str], output_format: str = "json"):
+    logger.info(f"Starting multi-target migration to {target_banks}")
+    try:
+        orchestrator = PipelineOrchestrator()
+        if isinstance(filepath_or_records, str):
+            result = orchestrator.migrate_file_multi(filepath_or_records, source_bank, target_banks, output_format)
+        else:
+            result = orchestrator.migrate_data_multi(filepath_or_records, source_bank, target_banks, output_format)
+        return result.model_dump()
+    except Exception as e:
+        logger.error(f"Multi-target migration failed: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@shared_task(bind=True)
+def run_data_migration_task(self, records: list, source_bank: str, target_bank: str, output_format: str = "json"):
+    """
+    Task to process raw record lists asynchronously.
+    """
+    logger.info(f"Starting background record migration for {len(records)} records")
     
-    registry.register_bank(target_bank, {
-        "first_name": "full_name",
-        "date_of_birth": "dob",
-        "account_number": "account_number",
-        "email": "email",
-        "phone": "phone"
-    })
-    
-    transformer = Transformer(validator, parser, mapper, rules, masker, audit, canonical, txn)
-    tracker = MigrationTracker()
-    
-    # 2. Process
-    result = transformer.transform(
-        records_iterator=iter(records),
-        source_bank=source_bank,
-        target_bank=target_bank,
-        failure_threshold=0.1
-    )
-    
-    # 3. Update Redis Progress
-    tracker.update_chunk_status(
-        migration_id=migration_id,
-        chunk_id=chunk_id,
-        processed=result.processed,
-        failed=result.failed
-    )
-    
-    return {
-        "chunk_id": chunk_id,
-        "processed": result.processed,
-        "failed": result.failed,
-        "success": result.success
-    }
+    try:
+        orchestrator = PipelineOrchestrator()
+        result = orchestrator.migrate_data(records, source_bank, target_bank, output_format)
+        
+        return {
+            "success": result.success,
+            "total_records": result.total_records,
+            "processed": result.processed,
+            "failed": result.failed,
+            "output_path": result.output_path,
+            "error": result.error,
+        }
+    except Exception as e:
+        logger.error(f"Data migration failed: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "total_records": 0,
+            "processed": 0,
+            "failed": 0,
+            "output_path": None
+        }

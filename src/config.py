@@ -11,6 +11,7 @@ class Settings(BaseModel):
     bank_schema_dir: Path = Path("config/bank_schemas")
     max_file_size_mb: int = 500
     throughput_target: int = 400
+    openai_api_key: str = ""
 
 
 settings = Settings()

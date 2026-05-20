@@ -1,0 +1,2 @@
+[console_scripts]
+bank-migration = api_only:main

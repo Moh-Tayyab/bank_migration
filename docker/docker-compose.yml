@@ -1,6 +1,16 @@
 version: "3.9"
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   migration-api:
     build:
       context: ..
@@ -15,4 +25,29 @@ services:
       - ../config:/app/config
     environment:
       - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:-}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: uv run celery -A src.infrastructure.celery_app worker --loglevel=info
+    volumes:
+      - ../uploads:/app/uploads
+      - ../output:/app/output
+      - ../logs:/app/logs
+      - ../canonical_store:/app/canonical_store
+      - ../config:/app/config
+    environment:
+      - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:-}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped

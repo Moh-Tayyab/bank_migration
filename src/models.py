@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
+from typing import Dict, Any, List, Optional
 from enum import Enum
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
@@ -12,68 +12,64 @@ class FileFormat(str, Enum):
     XML = "xml"
     TXT = "txt"
 
+class Record(BaseModel):
+    data: Dict[str, Any]
+    record_id: str
+    source_bank: str
+    target_bank: Optional[str] = None
 
 class AuditEvent(str, Enum):
-    INPUT_RECEIVED = "INPUT_RECEIVED"
     VALIDATION = "VALIDATION"
     MAPPING = "MAPPING"
     TRANSFORM = "TRANSFORM"
     SECURITY_MASK = "SECURITY_MASK"
-    OUTPUT_GENERATED = "OUTPUT_GENERATED"
+    ERROR = "ERROR"
     COMMITTED = "COMMITTED"
     ROLLED_BACK = "ROLLED_BACK"
-    ERROR = "ERROR"
+    OUTPUT_GENERATED = "OUTPUT_GENERATED"
 
-
-class Record(BaseModel):
-    data: Dict[str, Any]
+class AuditEntry(BaseModel):
+    event: AuditEvent
     record_id: str = ""
-    source_bank: str = ""
-    target_bank: str = ""
-    schema_version: str = ""
-
+    bank_pair: str = ""
+    details: str = ""
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 class CanonicalRecord(BaseModel):
     record_id: str
     raw_data: Dict[str, Any]
     canonical_data: Dict[str, Any]
     source_bank: str
-    ingested_at: datetime = Field(default_factory=datetime.utcnow)
     encrypted: bool = False
-
-
-class MappingRule(BaseModel):
-    source_field: str
-    target_field: str
-    transform: Optional[str] = None
-    default: Optional[Any] = None
-    required: bool = False
-
-
-class BankSchema(BaseModel):
-    bank_name: str
-    version: str
-    fields: Dict[str, Dict[str, Any]]
-    mappings: List[MappingRule]
-    masking_rules: Dict[str, str]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
-class AuditEntry(BaseModel):
-    event: AuditEvent
-    record_id: str
-    bank_pair: str
-    details: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
 
 class MigrationResult(BaseModel):
     success: bool
     total_records: int
     processed: int
     failed: int
-    output_path: Optional[str] = None
-    audit_trail: List[AuditEntry] = []
-    error: Optional[str] = None
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    audit_trail: List[AuditEntry]
+    records: List[Dict[str, Any]] = []
+    dlq: Optional[Dict] = None
+    started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    output_path: Optional[str] = None
+    error: Optional[str] = None
+
+class MultiBankMigrationResult(BaseModel):
+    success: bool
+    source_bank: str
+    target_banks: List[str]
+    results: List[MigrationResult]
+
+class MappingRule(BaseModel):
+    source_field: str
+    target_field: str
+    default: Optional[Any] = None
+    transform: Optional[str] = None
+
+class BankSchema(BaseModel):
+    bank_name: str
+    version: str
+    fields: Dict[str, Any]
+    mappings: List[MappingRule]
+    masking_rules: Dict[str, str]

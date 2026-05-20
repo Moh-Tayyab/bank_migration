@@ -142,6 +142,7 @@ body {
 .glass-card {
   background: var(--card);
   border: 1px solid var(--border);
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
 }
@@ -149,6 +150,33 @@ body {
 .glass-card:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--border-hover);
+}
+
+.glass-card-elevated {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.glass-card-elevated:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-hover);
+}
+
+.dashboard-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
 }
 
 /* ─── Gradient Utilities ────────────────────────────────────────── */
@@ -567,24 +595,172 @@ body {
   white-space: nowrap;
 }
 
-.badge-success {
-  background: var(--success-light);
-  color: var(--success);
+.badge-success, .badge-committed, .badge-output { background: var(--success-light); color: var(--success); }
+.badge-warning { background: var(--warning-light); color: var(--warning); }
+.badge-error, .badge-rolled-back { background: var(--error-light); color: var(--error); }
+.badge-info, .badge-received { background: var(--primary-light); color: var(--primary); }
+.badge-validation { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+.badge-mapping { background: rgba(99, 102, 241, 0.1); color: #818cf8; }
+.badge-transform { background: rgba(6, 182, 212, 0.1); color: #22d3ee; }
+.badge-masked { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
+
+/* ─── Background Orbs ────────────────────────────────────────────── */
+
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: -1;
 }
 
-.badge-warning {
-  background: var(--warning-light);
-  color: var(--warning);
+.orb-1 {
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent 70%);
+  animation: mesh-drift 20s ease-in-out infinite alternate;
 }
 
-.badge-error {
-  background: var(--error-light);
-  color: var(--error);
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  bottom: -150px;
+  left: -100px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.06), transparent 70%);
+  animation: mesh-drift 25s ease-in-out infinite alternate-reverse;
 }
 
-.badge-info {
-  background: var(--primary-light);
+/* ─── Format Buttons ────────────────────────────────────────────── */
+
+.format-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  user-select: none;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.format-btn:hover {
+  border-color: var(--primary);
   color: var(--primary);
+  background: var(--primary-light);
+}
+
+.format-btn:active {
+  transform: scale(0.96);
+}
+
+.format-btn.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.format-btn.active:hover {
+  background: linear-gradient(135deg, var(--primary-hover), var(--gradient-mid));
+}
+
+/* ─── Select Field ───────────────────────────────────────────────── */
+
+.select-field {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 2.5rem 0 0.875rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.select-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* ─── Progress Bar ───────────────────────────────────────────────── */
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--muted);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--gradient-start), var(--gradient-mid), var(--gradient-end));
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Audit Table ────────────────────────────────────────────────── */
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.audit-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.audit-table th:first-child { padding-left: 1.25rem; }
+.audit-table th:last-child { padding-right: 1.25rem; }
+
+.audit-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.audit-table td:first-child { padding-left: 1.25rem; }
+.audit-table td:last-child { padding-right: 1.25rem; }
+
+.audit-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.audit-table tbody tr:hover {
+  background: var(--card-hover);
+}
+
+.audit-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 /* ─── Responsive ────────────────────────────────────────────────── */

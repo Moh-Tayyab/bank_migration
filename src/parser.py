@@ -71,7 +71,7 @@ class Parser:
         if not amount:
             return ("", 0.0)
         amount = str(amount).strip()
-        currency_map = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₨": "PKR", "Rs": "PKR"}
+        currency_map = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₨": "PKR", "Rs": "PKR", "PKR": "PKR", "USD": "USD", "EUR": "EUR", "GBP": "GBP"}
         symbol = ""
         for sym, code in currency_map.items():
             if amount.startswith(sym) or amount.startswith(sym.lower()):
