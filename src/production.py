@@ -115,6 +115,18 @@ class PipelineOrchestrator:
     def get_banks(self) -> List[str]:
         return self._registry.list_banks()
 
+    def get_schema_mapping(self, source_bank: str, target_bank: str) -> List[Dict[str, Any]]:
+        try:
+            mappings = self._registry.get_mappings(source_bank, target_bank)
+            return [m.model_dump() for m in mappings]
+        except Exception:
+            return []
+
+    def preview_file(self, filepath: str, row_limit: int = 10) -> tuple[str, List[Dict[str, Any]]]:
+        detected = FormatDetector.detect_format(filepath)
+        records = FormatDetector.extract(filepath, detected)
+        return detected.value, records[:row_limit]
+
     def get_audit_trail(self, migration_id: str) -> List[AuditEntry]:
         log_path = settings.log_dir / f"audit_{migration_id}.jsonl"
         return AuditLogger.read_trail(str(log_path))

@@ -1,0 +1,27 @@
+{
+  "fields": {
+    "first_name": {"type": "str", "required": true, "description": "Customer first name"},
+    "middle_name": {"type": "str", "description": "Customer middle name"},
+    "last_name": {"type": "str", "required": true, "description": "Customer last name"},
+    "date_of_birth": {"type": "str", "required": true, "description": "Date of birth DD-MM-YYYY"},
+    "account_number": {"type": "str", "required": true, "description": "Masked account number"},
+    "email": {"type": "str", "required": true, "description": "Masked email"},
+    "contact_number": {"type": "str", "description": "Contact phone"},
+    "current_balance": {"type": "str", "description": "Account balance"}
+  },
+  "mappings": [
+    {"source_field": "name", "target_field": "first_name", "transform": "", "required": true},
+    {"source_field": "name", "target_field": "middle_name", "transform": "", "required": false},
+    {"source_field": "name", "target_field": "last_name", "transform": "", "required": true},
+    {"source_field": "dob", "target_field": "date_of_birth", "transform": "", "required": true},
+    {"source_field": "account", "target_field": "account_number", "transform": "", "required": true},
+    {"source_field": "email", "target_field": "email", "transform": "lower", "required": true},
+    {"source_field": "phone", "target_field": "contact_number", "transform": "", "required": false},
+    {"source_field": "balance", "target_field": "current_balance", "transform": "", "required": false}
+  ],
+  "masking_rules": {
+    "account_number": "show_last_4",
+    "email": "mask_email",
+    "contact_number": "show_last_4"
+  }
+}

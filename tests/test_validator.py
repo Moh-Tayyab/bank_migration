@@ -71,9 +71,7 @@ class TestRequiredValidation:
         v = Validator(rules={"name": {"required": True}})
         record = Record(data={}, record_id="1", source_bank="bank_a")
         result = v.validate(record)
-        # Missing field means key not in data — validator iterates over data keys
-        # so a truly missing field won't be checked. Only present-but-empty is caught.
-        assert result.is_valid is True  # key not in data, so not iterated
+        assert result.is_valid is False
 
     def test_required_field_empty_string(self):
         v = Validator(rules={"name": {"required": True}})

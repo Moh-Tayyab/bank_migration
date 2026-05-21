@@ -98,27 +98,21 @@ def test_dlq_and_failure_threshold():
 # PHASE 2: DISTRIBUTED INFRASTRUCTURE TESTS
 # =============================================================================
 
-def test_dispatcher_chunking():
+def test_dispatcher_chunking(tmp_dir):
     """Verify that the dispatcher correctly splits records into chunks."""
     dispatcher = MigrationDispatcher(chunk_size=5)
-    
-    # Create a dummy CSV for chunking test
-    test_file = "test_chunks.csv"
+
+    test_file = os.path.join(tmp_dir, "test_chunks.csv")
     with open(test_file, 'w', newline='') as f:
         import csv
         writer = csv.writer(f)
         writer.writerow(["full_name", "dob", "account_number", "email", "phone"])
         for i in range(12):
             writer.writerow([f"User {i}", "1990-01-01", "1234567890", "a@b.com", "123"])
-            
-    # Mock the Celery .delay() method
-    with patch('src.infrastructure.tasks.run_full_migration_task.delay') as mock_delay:
+
+    with patch('src.infrastructure.tasks.run_data_migration_task.delay') as mock_delay:
         dispatcher.dispatch_migration(test_file, "BankA", "BankB")
-        
-        # Should dispatch at least once
-        assert mock_delay.call_count >= 1
-        
-    os.remove(test_file)
+        assert mock_delay.call_count == 3  # 12 records / 5 per chunk = 3 chunks
 
 def test_multi_target_migration():
     """Verify that one source can be migrated to multiple target banks simultaneously."""

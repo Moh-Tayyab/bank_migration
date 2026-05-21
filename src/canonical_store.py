@@ -34,11 +34,15 @@ class _MemoryStore:
 
 
 class CanonicalStore:
+    _KEY_FILE = settings.canonical_store_dir / ".encryption_key"
+    _SALT_FILE = settings.canonical_store_dir / ".salt"
+
     def __init__(self, encryption_key: str = "", db_manager: DatabaseManager = None):
-        key = encryption_key or settings.canonical_encryption_key or self._generate_key()
-        self._fernet = Fernet(self._derive_key(key))
         self._memory_store = _MemoryStore()
         self._db_available = False
+        key = encryption_key or settings.canonical_encryption_key or self._load_or_create_key()
+        salt = self._load_or_create_salt()
+        self._fernet = Fernet(self._derive_key(key, salt))
 
         if db_manager is not None:
             self.db = db_manager
@@ -70,8 +74,24 @@ class CanonicalStore:
     def _generate_key(self) -> str:
         return base64.urlsafe_b64encode(os.urandom(32)).decode()
 
-    def _derive_key(self, key: str) -> bytes:
-        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=b"un_bank_migration", iterations=480000)
+    def _load_or_create_key(self) -> str:
+        settings.canonical_store_dir.mkdir(parents=True, exist_ok=True)
+        if self._KEY_FILE.exists():
+            return self._KEY_FILE.read_text().strip()
+        key = self._generate_key()
+        self._KEY_FILE.write_text(key)
+        return key
+
+    def _load_or_create_salt(self) -> bytes:
+        settings.canonical_store_dir.mkdir(parents=True, exist_ok=True)
+        if self._SALT_FILE.exists():
+            return base64.urlsafe_b64decode(self._SALT_FILE.read_text().strip())
+        salt = os.urandom(16)
+        self._SALT_FILE.write_text(base64.urlsafe_b64encode(salt).decode())
+        return salt
+
+    def _derive_key(self, key: str, salt: bytes) -> bytes:
+        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=480000)
         return base64.urlsafe_b64encode(kdf.derive(key.encode()))
 
     def store(self, record: CanonicalRecord) -> str:
@@ -91,7 +111,7 @@ class CanonicalStore:
         res = self.db.execute(query, (record_id,))
         if not res:
             return None
-        encrypted = res[0]['encrypted_data']
+        encrypted = bytes(res[0]['encrypted_data'])
         decrypted = self._fernet.decrypt(encrypted)
         return CanonicalRecord.model_validate_json(decrypted)
 

@@ -1,6 +1,23 @@
 version: "3.9"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER:-bank_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-bank_pass}
+      - POSTGRES_DB=${DB_NAME:-bank_migration}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bank_user} -d ${DB_NAME:-bank_migration}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:
@@ -10,6 +27,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   migration-api:
     build:
@@ -21,15 +39,22 @@ services:
       - ../uploads:/app/uploads
       - ../output:/app/output
       - ../logs:/app/logs
-      - ../canonical_store:/app/canonical_store
       - ../config:/app/config
     environment:
-      - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:-}
+      - DATABASE_URL=postgresql://${DB_USER:-bank_user}:${DB_PASSWORD:-bank_pass}@postgres:5432/${DB_NAME:-bank_migration}
+      - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:?CANONICAL_ENCRYPTION_KEY must be set in .env}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   worker:
@@ -41,13 +66,31 @@ services:
       - ../uploads:/app/uploads
       - ../output:/app/output
       - ../logs:/app/logs
-      - ../canonical_store:/app/canonical_store
       - ../config:/app/config
     environment:
-      - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:-}
+      - DATABASE_URL=postgresql://${DB_USER:-bank_user}:${DB_PASSWORD:-bank_pass}@postgres:5432/${DB_NAME:-bank_migration}
+      - CANONICAL_ENCRYPTION_KEY=${CANONICAL_ENCRYPTION_KEY:?CANONICAL_ENCRYPTION_KEY must be set in .env}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      migration-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

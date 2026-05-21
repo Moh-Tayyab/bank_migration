@@ -2,7 +2,6 @@ import json
 import csv
 import os
 import io
-import zipfile
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Any, Optional
 from .models import FileFormat
@@ -106,7 +105,8 @@ class FormatDetector:
 
     @staticmethod
     def _extract_xml(filepath: str) -> List[Dict[str, Any]]:
-        tree = ET.parse(filepath)
+        import defusedxml.ElementTree as safe_ET
+        tree = safe_ET.parse(filepath)
         root = tree.getroot()
         records = []
         for child in root:

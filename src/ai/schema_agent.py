@@ -12,11 +12,6 @@ logger = logging.getLogger(__name__)
 class SchemaIntelligenceAgent:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.openai_api_key
-        # Route OpenAI SDK to Gemini's OpenAI-compatible endpoint
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
         self.registry = BankRegistry()
         
         # Define the AI Agent using the OpenAI Agents SDK, but targeting Gemini 2.0 Flash

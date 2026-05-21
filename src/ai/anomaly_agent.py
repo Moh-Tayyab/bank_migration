@@ -11,11 +11,6 @@ logger = logging.getLogger(__name__)
 class AnomalyDetectionAgent:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.openai_api_key
-        # Route OpenAI SDK to Gemini's OpenAI-compatible endpoint
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
         
         # Define the AI Guardian Agent using the OpenAI Agents SDK, but targeting Gemini 2.0 Flash
         self.agent = Agent(

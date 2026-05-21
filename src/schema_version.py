@@ -21,7 +21,8 @@ class SchemaVersionManager:
         os.makedirs(registry_path, exist_ok=True)
 
     def _version_path(self, bank: str, version: str) -> str:
-        return os.path.join(self._registry_path, bank, f"v{version}.json")
+        filename = f"{version}.json" if version.endswith(".json") else f"{version}.json"
+        return os.path.join(self._registry_path, bank, filename)
 
     def save_schema(self, bank: str, version: str, schema: Dict) -> str:
         bank_dir = os.path.join(self._registry_path, bank)

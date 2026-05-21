@@ -1,0 +1,22 @@
+{
+  "fields": {
+    "first_name": {"type": "str", "required": true},
+    "middle_name": {"type": "str"},
+    "last_name": {"type": "str", "required": true},
+    "date_of_birth": {"type": "str", "required": true},
+    "account_number": {"type": "str", "required": true},
+    "email_address": {"type": "str", "required": true}
+  },
+  "mappings": [
+    {"source_field": "name", "target_field": "first_name", "transform": ""},
+    {"source_field": "name", "target_field": "middle_name", "transform": ""},
+    {"source_field": "name", "target_field": "last_name", "transform": ""},
+    {"source_field": "dob", "target_field": "date_of_birth", "transform": ""},
+    {"source_field": "account", "target_field": "account_number", "transform": ""},
+    {"source_field": "email", "target_field": "email_address", "transform": "lower"}
+  ],
+  "masking_rules": {
+    "account_number": "show_last_4",
+    "email_address": "mask_email"
+  }
+}

@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Iterator
 from .detector import FormatDetector
-from .infrastructure.tasks import run_full_migration_task
+from .infrastructure.tasks import run_data_migration_task
 from .infrastructure.celery_app import app
 
 class MigrationDispatcher:
@@ -27,11 +27,11 @@ class MigrationDispatcher:
 
         for chunk in self._get_record_chunks(filename):
             chunk_id += 1
-            run_full_migration_task.delay(
-                filepath=filename,
+            run_data_migration_task.delay(
+                records=chunk,
                 source_bank=source_bank,
                 target_bank=target_bank,
-                output_format=output_format
+                output_format=output_format,
             )
             total_dispatched += len(chunk)
             if chunk_id % 10 == 0:

@@ -27,7 +27,7 @@ class SchemaMapper:
         return record
 
     def _apply_transform(self, value: Any, transform: str) -> Any:
-        if not value:
+        if value is None:
             return value
         str_value = str(value)
         transforms = {

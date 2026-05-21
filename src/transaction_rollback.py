@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional, Iterator
 import copy
+from datetime import datetime
 
 class TransactionManager:
     def __init__(self):
@@ -23,7 +24,7 @@ class TransactionManager:
 
     def mark_failed(self, record_id: str, error: str):
         """Dead Letter Queue (DLQ) implementation: track failures without aborting."""
-        self._failed_records[record_id] = {"error": error, "timestamp": "..."}
+        self._failed_records[record_id] = {"error": error, "timestamp": datetime.utcnow().isoformat()}
 
     def commit(self) -> List[Dict[str, Any]]:
         if not self._in_transaction:

@@ -219,3 +219,77 @@ class TestTransformer:
         # Should work with generator directly
         result = transformer.transform(gen(), "source_bank", "target_bank")
         assert result.total_records == 5
+
+
+class TestProcessRecords:
+    """Test process_records() entry point used by PipelineOrchestrator."""
+
+    def test_process_records_basic(self, mock_components):
+        transformer = Transformer(
+            mock_components["validator"],
+            mock_components["parser"],
+            mock_components["mapper"],
+            mock_components["rules"],
+            mock_components["masker"],
+            mock_components["audit"],
+            mock_components["canonical"],
+            mock_components["txn"],
+        )
+        records = [
+            {"full_name": "Test", "dob": "1990-01-01", "account_number": "1234567890123456", "email": "t@t.com"},
+        ]
+        result = transformer.process_records(records, "source_bank", "target_bank")
+        assert result.success is True
+        assert result.processed == 1
+        assert result.started_at is not None
+        assert result.completed_at is not None
+
+    def test_process_records_error_handling(self, mock_components):
+        transformer = Transformer(
+            mock_components["validator"],
+            mock_components["parser"],
+            mock_components["mapper"],
+            mock_components["rules"],
+            mock_components["masker"],
+            mock_components["audit"],
+            mock_components["canonical"],
+            mock_components["txn"],
+        )
+        result = transformer.process_records([], "source_bank", "target_bank")
+        assert result.total_records == 0
+
+
+class TestProcessFile:
+    """Test process_file() entry point."""
+
+    def test_process_csv_file(self, mock_components, csv_file):
+        transformer = Transformer(
+            mock_components["validator"],
+            mock_components["parser"],
+            mock_components["mapper"],
+            mock_components["rules"],
+            mock_components["masker"],
+            mock_components["audit"],
+            mock_components["canonical"],
+            mock_components["txn"],
+        )
+        result = transformer.process_file(csv_file, "source_bank", "target_bank")
+        assert result.success is True
+        assert result.processed > 0
+        assert result.started_at is not None
+        assert result.completed_at is not None
+
+    def test_process_file_error_handling(self, mock_components):
+        transformer = Transformer(
+            mock_components["validator"],
+            mock_components["parser"],
+            mock_components["mapper"],
+            mock_components["rules"],
+            mock_components["masker"],
+            mock_components["audit"],
+            mock_components["canonical"],
+            mock_components["txn"],
+        )
+        result = transformer.process_file("/nonexistent/file.csv", "source_bank", "target_bank")
+        assert result.success is False
+        assert result.error is not None

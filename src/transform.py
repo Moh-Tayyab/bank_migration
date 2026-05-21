@@ -153,12 +153,12 @@ class Transformer:
                     failed += 1
                     self._txn.mark_failed(record_id, "Validation failed")
                     continue
-                canonical = CanonicalRecord(record_id=record_id, raw_data=raw, canonical_data=dict(raw), source_bank=source_bank)
-                self._canonical.store(canonical)
                 parsed = self._parser.parse_all(record.data)
                 record.data = parsed
                 record = self._mapper.map_record(record, target_bank)
                 transformed = self._rules.apply(record)
+                canonical = CanonicalRecord(record_id=record_id, raw_data=raw, canonical_data=dict(transformed) if isinstance(transformed, dict) else dict(record.data), source_bank=source_bank)
+                self._canonical.store(canonical)
                 masked = self._masker.mask(transformed, record_id)
                 self._txn.savepoint(record_id, masked)
                 processed += 1

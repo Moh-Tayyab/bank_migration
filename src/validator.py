@@ -34,7 +34,9 @@ class Validator:
         result = ValidationResult()
         data = record.data
 
-        for field, value in data.items():
+        all_fields = set(data.keys()) | set(self._rules.keys())
+        for field in all_fields:
+            value = data.get(field)
             rules = self._rules.get(field, {})
             field_rules = FieldRules(rules)
             field_rules.validate(field, value, result, data)

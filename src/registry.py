@@ -55,8 +55,16 @@ class BankRegistry:
         if not versions:
             return None
         if version == "latest":
-            return list(versions.values())[-1]
+            sorted_keys = sorted(versions.keys(), key=self._version_sort_key)
+            return versions[sorted_keys[-1]] if sorted_keys else None
         return versions.get(version)
+
+    @staticmethod
+    def _version_sort_key(v: str) -> list:
+        try:
+            return [int(x) for x in v.lstrip("v").split(".")]
+        except (ValueError, AttributeError):
+            return [0]
 
     def get_mappings(self, source_bank: str, target_bank: str) -> List[MappingRule]:
         source = self.get_schema(source_bank)

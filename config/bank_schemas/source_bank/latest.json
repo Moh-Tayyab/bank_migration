@@ -1,0 +1,13 @@
+{
+  "fields": {
+    "name": {"type": "str", "required": true, "description": "Full customer name"},
+    "dob": {"type": "str", "required": true, "description": "Date of birth YYYY-MM-DD"},
+    "account": {"type": "str", "required": true, "description": "Account number"},
+    "email": {"type": "str", "required": true, "description": "Email address"},
+    "phone": {"type": "str", "description": "Phone number"},
+    "address": {"type": "str", "description": "Full address"},
+    "balance": {"type": "str", "description": "Account balance"}
+  },
+  "mappings": [],
+  "masking_rules": {}
+}

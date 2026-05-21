@@ -2,12 +2,12 @@
 __pycache__/
 *.pyc
 .env
-.env.example
 uploads/
 logs/
 output/
 *.enc
-*.csv
-*.xlsx
-*.docx
-*.json
+.next/
+node_modules/
+*.egg-info/
+.pytest_cache/
+canonical_store/

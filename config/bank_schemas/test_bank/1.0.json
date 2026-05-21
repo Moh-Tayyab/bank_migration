@@ -1,0 +1,21 @@
+{
+  "fields": {
+    "id": {
+      "type": "str"
+    },
+    "name": {
+      "type": "str"
+    }
+  },
+  "mappings": [
+    {
+      "source_field": "name",
+      "target_field": "full_name",
+      "default": null,
+      "transform": null
+    }
+  ],
+  "masking_rules": {
+    "id": "show_last_4"
+  }
+}
