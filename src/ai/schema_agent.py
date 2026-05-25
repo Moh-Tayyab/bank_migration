@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
+import re
 from openai import OpenAI
 from openai_agents import Agent, AgentRuntime
 from src.models import BankSchema, MappingRule
@@ -8,6 +9,17 @@ from src.registry import BankRegistry
 from src.config import settings
 
 logger = logging.getLogger(__name__)
+
+MAX_USER_INPUT_LENGTH = 5000
+
+
+def _sanitize_input(text: str) -> str:
+    text = text[:MAX_USER_INPUT_LENGTH]
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    text = re.sub(r'(?i)ignore\s+(previous|above|all)\s+instructions', '[filtered]', text)
+    text = re.sub(r'(?i)system\s*:', '[filtered]', text)
+    text = re.sub(r'(?i)you\s+are\s+now', '[filtered]', text)
+    return text
 
 class SchemaIntelligenceAgent:
     def __init__(self, api_key: Optional[str] = None):
@@ -30,14 +42,17 @@ class SchemaIntelligenceAgent:
         if not source_schema:
             raise ValueError(f"Source bank {source_bank} not found in registry.")
 
+        safe_docs = _sanitize_input(target_docs)
+        safe_target = _sanitize_input(target_bank)
+
         prompt = f"""
         SOURCE SCHEMA (UN Wallet):
         {source_schema.model_dump_json(indent=2)}
-        
+
         TARGET BANK REQUIREMENTS:
-        {target_docs}
-        
-        Generate a JSON object for target bank '{target_bank}' following this exact structure:
+        {safe_docs}
+
+        Generate a JSON object for target bank '{safe_target}' following this exact structure:
         {{
             "bank_name": "{target_bank}",
             "version": "1.0.0",

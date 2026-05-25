@@ -17,6 +17,8 @@ src/security.py
 src/transaction_rollback.py
 src/transform.py
 src/validator.py
+src/ai/anomaly_agent.py
+src/ai/schema_agent.py
 src/bank_migration.egg-info/PKG-INFO
 src/bank_migration.egg-info/SOURCES.txt
 src/bank_migration.egg-info/dependency_links.txt
@@ -33,4 +35,15 @@ src/output/docx_writer.py
 src/output/html_writer.py
 src/output/json_writer.py
 src/output/xlsx_writer.py
+tests/test_audit_logger.py
+tests/test_detector.py
 tests/test_full_platform.py
+tests/test_output_writers.py
+tests/test_parser.py
+tests/test_registry.py
+tests/test_rules_engine.py
+tests/test_schema_mapper.py
+tests/test_security.py
+tests/test_transaction_rollback.py
+tests/test_transformer.py
+tests/test_validator.py

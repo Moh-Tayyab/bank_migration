@@ -48,12 +48,16 @@ class CanonicalStore:
             self.db = db_manager
             self._init_db()
         else:
-            try:
-                self.db = DatabaseManager()
-                self._init_db()
-                self._db_available = True
-            except Exception as e:
-                logger.warning("Database unavailable, using in-memory store: %s", e)
+            self.db = DatabaseManager()
+            if self.db.available:
+                try:
+                    self._init_db()
+                    self._db_available = True
+                except Exception as e:
+                    logger.info("Database unavailable, using in-memory store: %s", e)
+                    self.db = None
+                    self._db_available = False
+            else:
                 self.db = None
                 self._db_available = False
 
@@ -77,21 +81,26 @@ class CanonicalStore:
     def _load_or_create_key(self) -> str:
         settings.canonical_store_dir.mkdir(parents=True, exist_ok=True)
         if self._KEY_FILE.exists():
+            os.chmod(self._KEY_FILE, 0o600)
             return self._KEY_FILE.read_text().strip()
+        logger.warning("Auto-generating encryption key — set CANONICAL_ENCRYPTION_KEY env var for production use")
         key = self._generate_key()
         self._KEY_FILE.write_text(key)
+        os.chmod(self._KEY_FILE, 0o600)
         return key
 
     def _load_or_create_salt(self) -> bytes:
         settings.canonical_store_dir.mkdir(parents=True, exist_ok=True)
         if self._SALT_FILE.exists():
+            os.chmod(self._SALT_FILE, 0o600)
             return base64.urlsafe_b64decode(self._SALT_FILE.read_text().strip())
         salt = os.urandom(16)
         self._SALT_FILE.write_text(base64.urlsafe_b64encode(salt).decode())
+        os.chmod(self._SALT_FILE, 0o600)
         return salt
 
     def _derive_key(self, key: str, salt: bytes) -> bytes:
-        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=480000)
+        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000)
         return base64.urlsafe_b64encode(kdf.derive(key.encode()))
 
     def store(self, record: CanonicalRecord) -> str:

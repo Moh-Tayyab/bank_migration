@@ -1,12 +1,24 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
+import re
 from src.audit_logger import AuditLogger, AuditEntry
 from src.config import settings
 from openai import OpenAI
 from openai_agents import Agent, AgentRuntime
 
 logger = logging.getLogger(__name__)
+
+MAX_LOG_LENGTH = 20000
+
+
+def _sanitize_log(text: str) -> str:
+    text = text[:MAX_LOG_LENGTH]
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    text = re.sub(r'(?i)ignore\s+(previous|above|all)\s+instructions', '[filtered]', text)
+    text = re.sub(r'(?i)system\s*:', '[filtered]', text)
+    text = re.sub(r'(?i)you\s+are\s+now', '[filtered]', text)
+    return text
 
 class AnomalyDetectionAgent:
     def __init__(self, api_key: Optional[str] = None):
@@ -35,7 +47,7 @@ class AnomalyDetectionAgent:
             for entry in trail:
                 trail_summary.append(f"[{entry.timestamp}] {entry.event}: {entry.details}")
             
-            full_log = "\n".join(trail_summary)
+            full_log = _sanitize_log("\n".join(trail_summary))
             
             prompt = f"""
             Analyze the following audit log for migration {migration_id} and detect anomalies, unexpected failure patterns, or data quality issues.

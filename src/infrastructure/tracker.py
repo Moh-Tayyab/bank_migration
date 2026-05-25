@@ -20,7 +20,7 @@ class MigrationTracker:
             "failed_records": 0,
             "status": "RUNNING"
         }
-        self.redis.hmset(key, data)
+        self.redis.hset(key, mapping=data)
         # Also set an expiration to prevent Redis from filling up over time
         self.redis.expire(key, 86400) # 24 hours
 

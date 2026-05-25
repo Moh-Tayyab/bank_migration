@@ -1,4 +1,5 @@
 __init__
+ai
 audit_logger
 canonical_store
 config

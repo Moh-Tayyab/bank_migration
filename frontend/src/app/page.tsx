@@ -6,17 +6,11 @@ import ConfirmationDialog from "./components/ConfirmationDialog";
 import FilePreview from "./components/FilePreview";
 import SchemaPreview from "./components/SchemaPreview";
 import MigrationHistory from "./components/MigrationHistory";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const HISTORY_KEY = "migration_history";
-
-type AuditEntry = { event: string; record_id: string; bank_pair: string; details: string; timestamp: string };
-type ResultData = { success: boolean; total_records: number; processed: number; failed: number; output_path: string | null; error: string | null };
-type PreviewData = { filename: string; format: string; columns: string[]; rows: Record<string, string | number>[]; row_count: number };
-type HistoryEntry = { id: string; timestamp: string; sourceBank: string; targetBanks: string[]; outputFormat: string; totalRecords: number; processed: number; failed: number; success: boolean; outputPaths: string[] };
-
-const fmt = (name: string) => name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+import StatusBadge from "./components/StatusBadge";
+import DownloadCommand from "./components/DownloadCommand";
+import PipelineSteps from "./components/PipelineSteps";
+import { API_BASE, MAX_FILE_SIZE, HISTORY_KEY, fmt } from "./components/types";
+import type { AuditEntry, ResultData, PreviewData, HistoryEntry } from "./components/types";
 
 function loadHistory(): HistoryEntry[] {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
@@ -24,62 +18,6 @@ function loadHistory(): HistoryEntry[] {
 
 function saveHistory(history: HistoryEntry[]) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    INPUT_RECEIVED: "received", VALIDATION: "validation", MAPPING: "mapping",
-    TRANSFORM: "transform", SECURITY_MASK: "masked", COMMITTED: "committed",
-    ROLLED_BACK: "rolled-back", ERROR: "error", OUTPUT_GENERATED: "output",
-  };
-  const cls = map[status] || "info";
-  return <span className={`badge badge-${cls}`}>{status.replace(/_/g, " ")}</span>;
-}
-
-function DownloadCommand({ filename, apiBase }: { filename: string; apiBase: string }) {
-  const [copied, setCopied] = useState(false);
-  const cmd = `curl -O ${apiBase}/download/${filename}`;
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(cmd);
-      setCopied(true);
-      toast("success", "Command copied to clipboard");
-      setTimeout(() => setCopied(false), 2000);
-    } catch { toast("error", "Failed to copy"); }
-  };
-  return (
-    <button onClick={copy} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--muted)] border border-[var(--border)] text-[10px] font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--primary)] transition-all cursor-pointer" title={cmd}>
-      <Icon name={copied ? "check" : "download"} className="w-3 h-3" />
-      {copied ? "Copied" : "Copy cmd"}
-    </button>
-  );
-}
-
-function PipelineSteps({ current }: { current?: string }) {
-  const steps = [
-    { key: "upload", label: "Upload", icon: "upload" },
-    { key: "config", label: "Configure", icon: "settings" },
-    { key: "migrate", label: "Migrate", icon: "arrow" },
-    { key: "result", label: "Results", icon: "check" },
-  ];
-  const activeIdx = steps.findIndex((s) => s.key === current);
-  return (
-    <div className="flex items-center gap-1">
-      {steps.map((step, i) => (
-        <div key={step.key} className="flex items-center">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-            i <= activeIdx ? "bg-[var(--primary-light)] text-[var(--primary)]" : "text-[var(--muted-foreground)]"
-          }`}>
-            <Icon name={step.icon} className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{step.label}</span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`w-4 h-px mx-0.5 ${i < activeIdx ? "bg-[var(--primary)]" : "bg-[var(--border)]"}`} />
-          )}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function MigrationPageInner() {

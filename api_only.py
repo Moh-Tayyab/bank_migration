@@ -1,21 +1,63 @@
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+import logging
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Security, Request
+from fastapi.security import APIKeyHeader
 from fastapi.responses import FileResponse
 from typing import Optional, List
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
+import json
 import mimetypes
 from pathlib import Path
 from datetime import datetime
 from src.models import FileFormat
 from src.production import PipelineOrchestrator
 from src.config import settings
-from src.infrastructure.tasks import run_full_migration_task, run_data_migration_task, run_multi_migration_task
+
+logger = logging.getLogger(__name__)
+
+API_KEY_NAME = "X-API-Key"
+_api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+async def verify_api_key(api_key: str = Security(_api_key_header)):
+    expected = os.getenv("API_KEY", "")
+    if not expected:
+        return None  # auth disabled if no key configured
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    return api_key
+
+
+def _get_celery_tasks():
+    try:
+        from src.infrastructure.tasks import run_full_migration_task, run_data_migration_task, run_multi_migration_task
+        return run_full_migration_task, run_data_migration_task, run_multi_migration_task
+    except Exception:
+        logger.debug("Celery tasks not available, falling back to synchronous processing")
+        return None, None, None
 
 app = FastAPI(
     title="UN Wallet Multi-Bank Data Migration API",
     description="Production-Grade Interbank ETL Platform",
     version="1.0.0",
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 orchestrator = PipelineOrchestrator()
@@ -45,7 +87,10 @@ async def health():
 
 
 @app.post("/migrate/upload")
+@limiter.limit("10/minute")
 async def migrate_upload(
+    request: Request,
+    _auth=Depends(verify_api_key),
     file: UploadFile = File(...),
     source_bank: str = Form(...),
     target_banks: str = Form("[]"),
@@ -68,92 +113,122 @@ async def migrate_upload(
                 raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb}MB limit")
             f.write(chunk)
 
-    if len(banks) == 1:
-        try:
-            task = run_full_migration_task.delay(filepath, source_bank, banks[0], output_format)
-            return {
-                "task_id": task.id,
-                "status": "queued",
-                "message": f"Migration to {len(banks)} target bank(s) started in background. Use /status/{task_id} to check progress.",
-                "file_id": file_id
-            }
-        except Exception:
+    try:
+        if len(banks) == 1:
+            run_full, _, _ = _get_celery_tasks()
+            if run_full:
+                try:
+                    task = run_full.delay(filepath, source_bank, banks[0], output_format)
+                    return {
+                        "task_id": task.id,
+                        "status": "queued",
+                        "message": f"Migration to {len(banks)} target bank(s) started in background. Use /status/{task_id} to check progress.",
+                        "file_id": file_id
+                    }
+                except Exception:
+                    logger.debug("Celery task dispatch failed, running synchronously")
             result = orchestrator.migrate_file(filepath, source_bank, banks[0], output_format)
-            return result.model_dump()
-    else:
-        try:
-            task = run_multi_migration_task.delay(filepath, source_bank, banks, output_format)
-            return {
-                "task_id": task.id,
-                "status": "queued",
-                "message": f"Migration to {len(banks)} target bank(s) started in background. Use /status/{task_id} to check progress.",
-                "file_id": file_id
-            }
-        except Exception:
+            return json.loads(result.model_dump_json())
+        else:
+            _, _, run_multi = _get_celery_tasks()
+            if run_multi:
+                try:
+                    task = run_multi.delay(filepath, source_bank, banks, output_format)
+                    return {
+                        "task_id": task.id,
+                        "status": "queued",
+                        "message": f"Migration to {len(banks)} target bank(s) started in background. Use /status/{task_id} to check progress.",
+                        "file_id": file_id
+                    }
+                except Exception:
+                    logger.debug("Celery multi-task dispatch failed, running synchronously")
             result = orchestrator.migrate_file_multi(filepath, source_bank, banks, output_format)
-            return result.model_dump()
+            return json.loads(result.model_dump_json())
+    except HTTPException:
+        raise
+    except Exception as e:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        logger.exception("Migration failed")
+        raise HTTPException(status_code=500, detail="Migration failed. Check server logs for details.")
 
 
 @app.post("/migrate/data")
+@limiter.limit("10/minute")
 async def migrate_data(
+    request: Request,
     records: list[dict],
     source_bank: str = Form(...),
     target_banks: str = Form("[]"),
     output_format: Optional[str] = Form("json"),
+    _auth=Depends(verify_api_key),
 ):
     import json as _json
     banks = _json.loads(target_banks) if isinstance(target_banks, str) else target_banks
 
     if len(banks) == 1:
-        try:
-            task = run_data_migration_task.delay(records, source_bank, banks[0], output_format)
-            return {
-                "task_id": task.id,
-                "status": "queued",
-                "message": f"Migration to {len(banks)} target bank(s) started in background.",
-            }
-        except Exception:
-            result = orchestrator.migrate_data(records, source_bank, banks[0], output_format)
-            return result.model_dump()
+        _, run_data, _ = _get_celery_tasks()
+        if run_data:
+            try:
+                task = run_data.delay(records, source_bank, banks[0], output_format)
+                return {
+                    "task_id": task.id,
+                    "status": "queued",
+                    "message": f"Migration to {len(banks)} target bank(s) started in background.",
+                }
+            except Exception:
+                logger.debug("Celery data task dispatch failed, running synchronously")
+        result = orchestrator.migrate_data(records, source_bank, banks[0], output_format)
+        return json.loads(result.model_dump_json())
     else:
-        try:
-            task = run_multi_migration_task.delay(records, source_bank, banks, output_format)
-            return {
-                "task_id": task.id,
-                "status": "queued",
-                "message": f"Migration to {len(banks)} target bank(s) started in background.",
-            }
-        except Exception:
-            result = orchestrator.migrate_data_multi(records, source_bank, banks, output_format)
-            return result.model_dump()
+        _, _, run_multi = _get_celery_tasks()
+        if run_multi:
+            try:
+                task = run_multi.delay(records, source_bank, banks, output_format)
+                return {
+                    "task_id": task.id,
+                    "status": "queued",
+                    "message": f"Migration to {len(banks)} target bank(s) started in background.",
+                }
+            except Exception:
+                logger.debug("Celery multi-data task dispatch failed, running synchronously")
+        result = orchestrator.migrate_data_multi(records, source_bank, banks, output_format)
+        return json.loads(result.model_dump_json())
 
 
 @app.get("/status/{task_id}")
-async def get_task_status(task_id: str):
-    from src.infrastructure.celery_app import app as celery_app
-    task_result = celery_app.AsyncResult(task_id)
-    
-    response = {
-        "task_id": task_id,
-        "status": task_result.status,
-        "result": task_result.result if task_result.ready() else None
-    }
-    return response
+@limiter.limit("30/minute")
+async def get_task_status(request: Request, task_id: str, _auth=Depends(verify_api_key)):
+    try:
+        from src.infrastructure.celery_app import app as celery_app
+        task_result = celery_app.AsyncResult(task_id)
+        response = {
+            "task_id": task_id,
+            "status": task_result.status,
+            "result": task_result.result if task_result.ready() else None
+        }
+        return response
+    except Exception:
+        logger.debug("Celery status check failed")
+        return {"task_id": task_id, "status": "unavailable", "result": None}
 
 
 @app.get("/banks")
-async def list_banks():
+@limiter.limit("30/minute")
+async def list_banks(request: Request, _auth=Depends(verify_api_key)):
     return {"banks": orchestrator.get_banks()}
 
 
 @app.get("/schema/{source_bank}/{target_bank}")
-async def get_schema_mapping(source_bank: str, target_bank: str):
+@limiter.limit("30/minute")
+async def get_schema_mapping(request: Request, source_bank: str, target_bank: str, _auth=Depends(verify_api_key)):
     mappings = orchestrator.get_schema_mapping(source_bank, target_bank)
     return {"source_bank": source_bank, "target_bank": target_bank, "mappings": mappings}
 
 
 @app.get("/download/{filename}")
-async def download_file(filename: str):
+@limiter.limit("20/minute")
+async def download_file(request: Request, filename: str, _auth=Depends(verify_api_key)):
     safe_name = os.path.basename(filename)
     filepath = settings.output_dir / safe_name
     if not filepath.is_file():
@@ -167,7 +242,10 @@ async def download_file(filename: str):
 
 
 @app.post("/preview")
+@limiter.limit("10/minute")
 async def preview_file(
+    request: Request,
+    _auth=Depends(verify_api_key),
     file: UploadFile = File(...),
     row_limit: int = Form(10),
 ):
@@ -185,6 +263,10 @@ async def preview_file(
                 if total > max_bytes:
                     raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb}MB limit")
                 f.write(chunk)
+    except HTTPException:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise
     try:
         detected, records = orchestrator.preview_file(filepath, row_limit)
         return {
@@ -201,13 +283,15 @@ async def preview_file(
 
 
 @app.get("/audit/{migration_id}")
-async def get_audit(migration_id: str):
+@limiter.limit("30/minute")
+async def get_audit(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     trail = orchestrator.get_audit_trail(migration_id)
-    return {"entries": [e.model_dump() for e in trail]}
+    return {"entries": [json.loads(e.model_dump_json()) for e in trail]}
 
 
 @app.get("/audit/{migration_id}/export")
-async def export_audit_csv(migration_id: str):
+@limiter.limit("20/minute")
+async def export_audit_csv(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     import csv
     import io
     from fastapi.responses import StreamingResponse
@@ -228,7 +312,10 @@ async def export_audit_csv(migration_id: str):
 # --- AI Orchestration Endpoints ---
 
 @app.post("/ai/suggest-mapping")
+@limiter.limit("5/minute")
 async def ai_suggest_mapping(
+    request: Request,
+    _auth=Depends(verify_api_key),
     source_bank: str = Form(...),
     target_bank: str = Form(...),
     target_docs: str = Form(...)
@@ -240,11 +327,13 @@ async def ai_suggest_mapping(
         suggestion = get_schema_ai().suggest_mapping(source_bank, target_bank, target_docs)
         return {"suggestion": suggestion}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("AI schema suggestion failed")
+        raise HTTPException(status_code=500, detail="Failed to generate schema suggestion.")
 
 
 @app.post("/ai/apply-mapping")
-async def ai_apply_mapping(suggestion: dict):
+@limiter.limit("5/minute")
+async def ai_apply_mapping(request: Request, suggestion: dict, _auth=Depends(verify_api_key)):
     """
     Validates and saves an AI suggested mapping to the registry.
     """
@@ -252,11 +341,13 @@ async def ai_apply_mapping(suggestion: dict):
         path = get_schema_ai().apply_suggestion(suggestion)
         return {"status": "success", "saved_at": path}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.exception("AI mapping application failed")
+        raise HTTPException(status_code=400, detail="Failed to apply schema mapping.")
 
 
 @app.get("/ai/analyze-anomaly/{migration_id}")
-async def ai_analyze_anomaly(migration_id: str):
+@limiter.limit("5/minute")
+async def ai_analyze_anomaly(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     """
     AI analyzes the audit trail for a specific migration to detect quality issues.
     """
@@ -264,11 +355,15 @@ async def ai_analyze_anomaly(migration_id: str):
         analysis = get_anomaly_ai().analyze_audit_trail(migration_id)
         return analysis
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("AI anomaly analysis failed")
+        raise HTTPException(status_code=500, detail="Failed to analyze audit trail.")
 
 
 def main():
-    uvicorn.run("api_only:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "8000"))
+    reload = os.getenv("RELOAD", "false").lower() == "true"
+    uvicorn.run("api_only:app", host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":

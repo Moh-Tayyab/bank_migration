@@ -79,13 +79,16 @@ class SecurityMasker:
         digits = re.sub(r'\D', '', value)
         if len(digits) <= 4:
             return value
-        masked = "*" * (len(digits) - 4) + digits[-4:]
+        masked_digits = "*" * (len(digits) - 4) + digits[-4:]
+        result = []
+        digit_idx = 0
         for char in value:
-            if not char.isdigit():
-                pos = value.index(char)
-                masked = masked[:pos] + char + masked[pos + 1:]
-                break
-        return masked
+            if char.isdigit():
+                result.append(masked_digits[digit_idx])
+                digit_idx += 1
+            else:
+                result.append(char)
+        return "".join(result)
 
     def _mask_show_last_6(self, value: str) -> str:
         digits = re.sub(r'\D', '', value)
