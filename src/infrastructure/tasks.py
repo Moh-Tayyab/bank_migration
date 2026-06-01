@@ -1,14 +1,16 @@
-from typing import List
-import json as _json
-import os as _os
-from celery import shared_task
-from .celery_app import app
-from src.production import PipelineOrchestrator
-from src.config import settings
-from .retention import DataRetentionPolicy
+import json
 import logging
+import os as _os
+from typing import List
+
+from celery import shared_task
+
+from src.production import PipelineOrchestrator
+
+from .retention import DataRetentionPolicy
 
 logger = logging.getLogger(__name__)
+
 
 @shared_task(bind=True)
 def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: str, output_format: str = "json"):
@@ -21,10 +23,7 @@ def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: 
     try:
         orchestrator = PipelineOrchestrator()
         result = orchestrator.migrate_file(
-            filepath=filepath,
-            source_bank=source_bank,
-            target_bank=target_bank,
-            output_format=output_format
+            filepath=filepath, source_bank=source_bank, target_bank=target_bank, output_format=output_format
         )
         return {
             "success": result.success,
@@ -36,14 +35,7 @@ def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: 
         }
     except Exception as e:
         logger.error(f"Migration failed for {filepath}: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e),
-            "total_records": 0,
-            "processed": 0,
-            "failed": 0,
-            "output_path": None
-        }
+        return {"success": False, "error": str(e), "total_records": 0, "processed": 0, "failed": 0, "output_path": None}
     finally:
         if filepath and _os.path.exists(filepath):
             try:
@@ -51,11 +43,14 @@ def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: 
                 logger.info(f"Cleaned up uploaded file: {filepath}")
             except OSError as e:
                 logger.warning(f"Failed to clean up uploaded file {filepath}: {e}")
-        if orchestrator and hasattr(orchestrator, '_transformer'):
+        if orchestrator and hasattr(orchestrator, "_transformer"):
             DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
 
+
 @shared_task(bind=True)
-def run_multi_migration_task(self, filepath_or_records, source_bank: str, target_banks: List[str], output_format: str = "json"):
+def run_multi_migration_task(
+    self, filepath_or_records, source_bank: str, target_banks: List[str], output_format: str = "json"
+):
     logger.info(f"Starting multi-target migration to {target_banks}")
     orchestrator = None
     filepath = None
@@ -78,8 +73,9 @@ def run_multi_migration_task(self, filepath_or_records, source_bank: str, target
                 logger.info(f"Cleaned up uploaded file: {filepath}")
             except OSError as e:
                 logger.warning(f"Failed to clean up uploaded file {filepath}: {e}")
-        if orchestrator and hasattr(orchestrator, '_transformer'):
+        if orchestrator and hasattr(orchestrator, "_transformer"):
             DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
+
 
 @shared_task(bind=True)
 def run_data_migration_task(self, records: list, source_bank: str, target_bank: str, output_format: str = "json"):
@@ -102,14 +98,7 @@ def run_data_migration_task(self, records: list, source_bank: str, target_bank: 
         }
     except Exception as e:
         logger.error(f"Data migration failed: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e),
-            "total_records": 0,
-            "processed": 0,
-            "failed": 0,
-            "output_path": None
-        }
+        return {"success": False, "error": str(e), "total_records": 0, "processed": 0, "failed": 0, "output_path": None}
     finally:
-        if orchestrator and hasattr(orchestrator, '_transformer'):
+        if orchestrator and hasattr(orchestrator, "_transformer"):
             DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)

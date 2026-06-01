@@ -125,5 +125,6 @@ export function useSqlLoader() {
   return {
     file, dragOver, preview, previewLoading, loading, result, errMsg, inputRef,
     setDragOver, onDrop, onFileSelect, handlePreview, handleGenerateScript, handleDownloadScript, handleReset,
+    scriptFilename: result?.script_filename || null,
   };
 }

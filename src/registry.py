@@ -1,8 +1,9 @@
-from typing import Dict, List, Optional
-from .models import BankSchema, MappingRule
-from .schema_version import SchemaVersionManager
 import json
 import os
+from typing import Dict, List, Optional
+
+from .models import BankSchema, MappingRule
+from .schema_version import SchemaVersionManager
 
 
 class BankRegistry:
@@ -38,7 +39,8 @@ class BankRegistry:
 
     def register_bank(self, bank: str, schema: BankSchema) -> str:
         path = self._version_manager.save_schema(
-            bank, schema.version,
+            bank,
+            schema.version,
             {
                 "fields": schema.fields,
                 "mappings": [m.model_dump() for m in schema.mappings],
@@ -67,7 +69,6 @@ class BankRegistry:
             return [0]
 
     def get_mappings(self, source_bank: str, target_bank: str) -> List[MappingRule]:
-        source = self.get_schema(source_bank)
         target = self.get_schema(target_bank)
         if not target:
             return []
@@ -98,7 +99,6 @@ class BankRegistry:
 
         best_match = None
         best_score = 0
-        best_fields = {}
 
         for bank in self._schemas:
             if bank in exclude:
@@ -114,7 +114,6 @@ class BankRegistry:
             if score > best_score:
                 best_score = score
                 best_match = bank
-                best_fields = schema_fields
 
         # Only return a match if there's at least some overlap
         if best_score > 0:

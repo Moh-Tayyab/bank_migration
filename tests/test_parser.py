@@ -1,14 +1,12 @@
 """
 Tests for Parser — intelligent name, date, address, and currency parsing.
 """
-import pytest
-
-from src.parser import Parser
 
 
 # ===========================================================================
 # Name Parsing Tests
 # ===========================================================================
+
 
 class TestNameParsing:
     """Test parse_name() for various name formats."""
@@ -56,6 +54,7 @@ class TestNameParsing:
 # ===========================================================================
 # Date Parsing Tests
 # ===========================================================================
+
 
 class TestDateParsing:
     """Test parse_date() for various date formats."""
@@ -113,6 +112,7 @@ class TestDateParsing:
 # Address Parsing Tests
 # ===========================================================================
 
+
 class TestAddressParsing:
     """Test parse_address() for various address formats."""
 
@@ -152,6 +152,7 @@ class TestAddressParsing:
 # ===========================================================================
 # Currency Parsing Tests
 # ===========================================================================
+
 
 class TestCurrencyParsing:
     """Test parse_currency() for various currency formats."""
@@ -212,6 +213,7 @@ class TestCurrencyParsing:
 # ===========================================================================
 # parse_all() Integration Tests
 # ===========================================================================
+
 
 class TestParseAll:
     """Test parse_all() which combines all parsers."""

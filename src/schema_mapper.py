@@ -1,5 +1,6 @@
-from typing import Dict, Any, List, Optional
-from .models import MappingRule, Record
+from typing import Any, Dict, Optional
+
+from .models import Record
 from .registry import BankRegistry
 
 

@@ -1,15 +1,14 @@
 """
 Tests for SecurityMasker — PII detection and masking.
 """
-import pytest
 
-from src.security import SecurityMasker
 from src.audit_logger import AuditLogger
-
+from src.security import SecurityMasker
 
 # ===========================================================================
 # Account Number Masking Tests
 # ===========================================================================
+
 
 class TestAccountNumberMasking:
     """Test account number and IBAN masking."""
@@ -45,6 +44,7 @@ class TestAccountNumberMasking:
 # Email Masking Tests
 # ===========================================================================
 
+
 class TestEmailMasking:
     """Test email address masking."""
 
@@ -73,6 +73,7 @@ class TestEmailMasking:
 # ===========================================================================
 # Auto-Detection Tests
 # ===========================================================================
+
 
 class TestAutoDetection:
     """Test automatic PII detection from field names and values."""
@@ -137,6 +138,7 @@ class TestAutoDetection:
 # Full Masking Pipeline Tests
 # ===========================================================================
 
+
 class TestMaskingPipeline:
     """Test the full mask() method."""
 
@@ -176,11 +178,12 @@ class TestMaskingPipeline:
     def test_mask_with_audit_logging(self, tmp_dir):
         """Masking with audit logger should log masking events."""
         from pathlib import Path
+
         audit = AuditLogger(migration_id="test_mask")
         audit._log_path = Path(tmp_dir) / "audit_mask.jsonl"
         m = SecurityMasker(audit_logger=audit)
         data = {"account_number": "1234567890123456", "name": "Test"}
-        result = m.mask(data, record_id="REC-001")
+        m.mask(data, record_id="REC-001")
         # Audit trail should have entries
         trail = audit.get_trail()
         assert len(trail) >= 1
@@ -190,6 +193,7 @@ class TestMaskingPipeline:
 # ===========================================================================
 # Edge Cases
 # ===========================================================================
+
 
 class TestEdgeCases:
     """Test edge cases in masking."""

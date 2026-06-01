@@ -1,7 +1,8 @@
-from typing import List, Dict, Any, Iterator
+from typing import Any, Dict, Iterator, List
+
 from .detector import FormatDetector
 from .infrastructure.tasks import run_data_migration_task
-from .infrastructure.celery_app import app
+
 
 class MigrationDispatcher:
     def __init__(self, chunk_size: int = 5000):

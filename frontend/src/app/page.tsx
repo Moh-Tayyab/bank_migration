@@ -13,6 +13,7 @@ import ResultPanel from "./components/ResultPanel";
 import MultiBankResults from "./components/MultiBankResults";
 import AuditPanel from "./components/AuditPanel";
 import PollingCard from "./components/PollingCard";
+import DownloadCommand from "./components/DownloadCommand";
 import { BanksBarSkeleton, CardSkeleton } from "./components/Skeleton";
 import { fmt } from "./components/types";
 import { useMigration } from "./components/hooks/useMigration";
@@ -369,13 +370,16 @@ function MigrationPageInner() {
                         </button>
 
                         {s.result && (
-                          <button
-                            onClick={s.handleDownloadScript}
-                            className="btn-secondary text-sm"
-                          >
-                            <Icon name="download" className="w-4 h-4" />
-                            Download .sh
-                          </button>
+                          <>
+                            <button
+                              onClick={s.handleDownloadScript}
+                              className="btn-secondary text-sm"
+                            >
+                              <Icon name="download" className="w-4 h-4" />
+                              Download .sh
+                            </button>
+                            <DownloadCommand scriptName={s.result.script_filename} type="bash" />
+                          </>
                         )}
                       </div>
 

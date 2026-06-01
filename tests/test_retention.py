@@ -1,16 +1,11 @@
 import os
-import json
 import tempfile
-import shutil
-from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, MagicMock, patch
 import time
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-import pytest
-
-from src.infrastructure.retention import DataRetentionPolicy, CleanupReport
 from src.config import settings
+from src.infrastructure.retention import CleanupReport, DataRetentionPolicy
 
 
 class TestCleanupReport:
@@ -118,19 +113,21 @@ class TestDataRetentionPolicy:
 
 class TestCanonicalStoreCleanup:
     def test_cleanup_with_ttl_zero_disabled(self):
-        with patch('src.canonical_store.CanonicalStore') as MockStore:
+        with patch("src.canonical_store.CanonicalStore"):
             policy = DataRetentionPolicy(canonical_ttl_hours=0)
             assert policy.cleanup_canonical_store() == 0
 
     def test_cleanup_with_db(self):
-        with patch('src.canonical_store.CanonicalStore') as MockStore:
+        with patch("src.canonical_store.CanonicalStore") as MockStore:
             mock_store = Mock()
             mock_store._db_available = True
             mock_store.db = Mock()
-            mock_store.db.execute = Mock(return_value=[
-                {"record_id": "old1"},
-                {"record_id": "old2"},
-            ])
+            mock_store.db.execute = Mock(
+                return_value=[
+                    {"record_id": "old1"},
+                    {"record_id": "old2"},
+                ]
+            )
             mock_store.delete = Mock()
             MockStore.return_value = mock_store
 
@@ -140,7 +137,7 @@ class TestCanonicalStoreCleanup:
             assert mock_store.delete.call_count == 2
 
     def test_cleanup_in_memory_store(self):
-        with patch('src.canonical_store.CanonicalStore') as MockStore:
+        with patch("src.canonical_store.CanonicalStore") as MockStore:
             mock_store = Mock()
             mock_memory = Mock()
             mock_memory._records = {"rec1": {}, "rec2": {}, "rec3": {}}

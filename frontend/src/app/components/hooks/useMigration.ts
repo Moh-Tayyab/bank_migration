@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "../Toast";
-import { API_BASE, MAX_FILE_SIZE, HISTORY_KEY, apiHeaders } from "../types";
+import { API_BASE, MAX_FILE_SIZE, HISTORY_KEY, apiHeaders, fmt } from "../types";
 import type { AuditEntry, ResultData, PreviewData, HistoryEntry } from "../types";
 
 function loadHistory(): HistoryEntry[] {

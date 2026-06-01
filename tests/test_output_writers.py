@@ -1,18 +1,20 @@
 """
 Tests for Output Writers — JSON, CSV, DOCX, XLSX, HTML output generation.
 """
-import os
-import json
+
 import csv
+import json
+import os
+
 import pytest
 
-from src.models import MigrationResult, AuditEntry, AuditEvent
-from src.output import get_writer, JSONWriter, CSVWriter, DOCXWriter, XLSXWriter, HTMLWriter
-
+from src.models import AuditEntry, AuditEvent, MigrationResult
+from src.output import CSVWriter, DOCXWriter, HTMLWriter, JSONWriter, XLSXWriter, get_writer
 
 # ===========================================================================
 # Helper to create MigrationResult
 # ===========================================================================
+
 
 def make_migration_result(success=True, total=10, processed=8, failed=2, error=None):
     """Create a MigrationResult with optional audit trail entries."""
@@ -43,6 +45,7 @@ def make_migration_result(success=True, total=10, processed=8, failed=2, error=N
 # ===========================================================================
 # get_writer() Factory Tests
 # ===========================================================================
+
 
 class TestGetWriter:
     """Test the writer factory function."""
@@ -83,6 +86,7 @@ class TestGetWriter:
 # ===========================================================================
 # JSON Writer Tests
 # ===========================================================================
+
 
 class TestJSONWriter:
     """Test JSON output writer."""
@@ -131,6 +135,7 @@ class TestJSONWriter:
 # CSV Writer Tests
 # ===========================================================================
 
+
 class TestCSVWriter:
     """Test CSV output writer."""
 
@@ -156,7 +161,10 @@ class TestCSVWriter:
         """CSV writer with no audit trail should write summary row."""
         writer = CSVWriter()
         result = MigrationResult(
-            success=True, total_records=0, processed=0, failed=0,
+            success=True,
+            total_records=0,
+            processed=0,
+            failed=0,
             audit_trail=[],
         )
         path = os.path.join(tmp_dir, "output.csv")
@@ -171,6 +179,7 @@ class TestCSVWriter:
 # ===========================================================================
 # DOCX Writer Tests
 # ===========================================================================
+
 
 class TestDOCXWriter:
     """Test DOCX output writer."""
@@ -201,6 +210,7 @@ class TestDOCXWriter:
 # XLSX Writer Tests
 # ===========================================================================
 
+
 class TestXLSXWriter:
     """Test XLSX output writer."""
 
@@ -220,6 +230,7 @@ class TestXLSXWriter:
 
     def test_write_contains_data(self, tmp_dir):
         from openpyxl import load_workbook
+
         writer = XLSXWriter()
         result = make_migration_result(success=True, total=50, processed=48, failed=2)
         path = os.path.join(tmp_dir, "output.xlsx")
@@ -234,6 +245,7 @@ class TestXLSXWriter:
 # ===========================================================================
 # HTML Writer Tests
 # ===========================================================================
+
 
 class TestHTMLWriter:
     """Test HTML output writer."""

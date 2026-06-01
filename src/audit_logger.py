@@ -1,9 +1,9 @@
-from datetime import datetime
-from typing import List, Optional
-from .models import AuditEntry, AuditEvent
-from .config import settings
-import json
 import os
+from datetime import datetime
+from typing import List
+
+from .config import settings
+from .models import AuditEntry, AuditEvent
 
 
 class AuditLogger:

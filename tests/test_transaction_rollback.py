@@ -1,14 +1,15 @@
 """
 Tests for TransactionManager — transaction lifecycle, savepoints, rollback, DLQ.
 """
+
 import pytest
 
 from src.transaction_rollback import TransactionManager
 
-
 # ===========================================================================
 # Transaction Lifecycle Tests
 # ===========================================================================
+
 
 class TestTransactionLifecycle:
     """Test begin, commit, rollback lifecycle."""
@@ -61,6 +62,7 @@ class TestTransactionLifecycle:
 # ===========================================================================
 # Savepoint Tests
 # ===========================================================================
+
 
 class TestSavepoints:
     """Test savepoint management."""
@@ -116,6 +118,7 @@ class TestSavepoints:
 # Rollback to Savepoint Tests
 # ===========================================================================
 
+
 class TestRollbackToSavepoint:
     """Test partial rollback to a specific savepoint."""
 
@@ -143,6 +146,7 @@ class TestRollbackToSavepoint:
 # ===========================================================================
 # Dead Letter Queue (DLQ) Tests
 # ===========================================================================
+
 
 class TestDeadLetterQueue:
     """Test failure tracking via DLQ."""
@@ -185,6 +189,7 @@ class TestDeadLetterQueue:
 # ===========================================================================
 # Edge Cases
 # ===========================================================================
+
 
 class TestEdgeCases:
     """Test edge cases."""

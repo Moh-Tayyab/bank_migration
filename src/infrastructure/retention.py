@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -111,6 +110,7 @@ class DataRetentionPolicy:
         if canonical_store is None:
             try:
                 from ..canonical_store import CanonicalStore
+
                 canonical_store = CanonicalStore()
             except Exception as e:
                 logger.warning("Cannot initialize canonical store for cleanup: %s", e)
@@ -149,7 +149,7 @@ class DataRetentionPolicy:
     def clear_in_memory_store(canonical_store) -> int:
         if canonical_store is None:
             return 0
-        if hasattr(canonical_store, '_memory_store'):
+        if hasattr(canonical_store, "_memory_store"):
             count = len(canonical_store._memory_store._records)
             canonical_store._memory_store._records.clear()
             logger.info("Cleared %d records from in-memory canonical store", count)

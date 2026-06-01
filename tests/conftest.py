@@ -1,12 +1,13 @@
 """
 Shared fixtures for all bank migration tests.
 """
-import os
-import sys
-import json
+
 import csv
-import tempfile
+import json
+import os
 import shutil
+import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -15,10 +16,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Temporary directory fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def tmp_dir():
@@ -39,6 +40,7 @@ def sample_dir(tmp_dir):
 # ---------------------------------------------------------------------------
 # Sample data fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_record():
@@ -91,6 +93,7 @@ def sample_records():
 # ---------------------------------------------------------------------------
 # File fixtures — create real files on disk for FormatDetector tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def csv_file(sample_dir, sample_records):
@@ -162,6 +165,7 @@ def txt_file(sample_dir):
 def xlsx_file(sample_dir, sample_records):
     """Create a real XLSX file with sample records."""
     from openpyxl import Workbook
+
     path = os.path.join(sample_dir, "test_data.xlsx")
     wb = Workbook()
     ws = wb.active
@@ -178,6 +182,7 @@ def xlsx_file(sample_dir, sample_records):
 def docx_file(sample_dir):
     """Create a real DOCX file with a table of records."""
     from docx import Document
+
     path = os.path.join(sample_dir, "test_data.docx")
     doc = Document()
     table = doc.add_table(rows=3, cols=3)
@@ -200,40 +205,48 @@ def docx_file(sample_dir):
 # Component fixtures — pre-built instances for unit tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def parser():
     from src.parser import Parser
+
     return Parser()
 
 
 @pytest.fixture
 def validator():
     from src.validator import Validator
+
     return Validator()
 
 
 @pytest.fixture
 def validator_with_rules():
     from src.validator import Validator
-    return Validator(rules={
-        "dob": {"type": "date"},
-        "email": {"type": "email"},
-        "phone": {"type": "phone"},
-        "account_number": {"min_length": 5},
-        "full_name": {"required": True},
-    })
+
+    return Validator(
+        rules={
+            "dob": {"type": "date"},
+            "email": {"type": "email"},
+            "phone": {"type": "phone"},
+            "account_number": {"min_length": 5},
+            "full_name": {"required": True},
+        }
+    )
 
 
 @pytest.fixture
 def masker():
     from src.security import SecurityMasker
+
     return SecurityMasker()
 
 
 @pytest.fixture
 def masker_with_audit():
-    from src.security import SecurityMasker
     from src.audit_logger import AuditLogger
+    from src.security import SecurityMasker
+
     audit = AuditLogger(migration_id="test_migration")
     return SecurityMasker(audit_logger=audit), audit
 
@@ -241,6 +254,7 @@ def masker_with_audit():
 @pytest.fixture
 def audit_logger(tmp_dir):
     from src.audit_logger import AuditLogger
+
     logger = AuditLogger(migration_id="test_audit")
     # Override log path to use tmp_dir
     logger._log_path = Path(tmp_dir) / "audit_test.jsonl"
@@ -250,30 +264,35 @@ def audit_logger(tmp_dir):
 @pytest.fixture
 def txn_manager():
     from src.transaction_rollback import TransactionManager
+
     return TransactionManager()
 
 
 @pytest.fixture
 def rules_engine():
     from src.rules_engine import RulesEngine, build_standard_rules
+
     return RulesEngine(build_standard_rules())
 
 
 @pytest.fixture
 def bank_registry():
     from src.registry import BankRegistry
+
     return BankRegistry()
 
 
 @pytest.fixture
 def schema_mapper(bank_registry):
     from src.schema_mapper import SchemaMapper
+
     return SchemaMapper(registry=bank_registry)
 
 
 @pytest.fixture
 def canonical_store(tmp_dir):
     from src.canonical_store import CanonicalStore
+
     store = CanonicalStore(
         encryption_key="test-key-123",
         db_manager=MagicMock(),
@@ -284,15 +303,15 @@ def canonical_store(tmp_dir):
 @pytest.fixture
 def mock_components():
     """Provide all mocked components for isolated Transformer tests."""
-    from src.validator import Validator
-    from src.parser import Parser
-    from src.schema_mapper import SchemaMapper
-    from src.rules_engine import RulesEngine, build_standard_rules
-    from src.security import SecurityMasker
     from src.audit_logger import AuditLogger
     from src.canonical_store import CanonicalStore
-    from src.transaction_rollback import TransactionManager
+    from src.parser import Parser
     from src.registry import BankRegistry
+    from src.rules_engine import RulesEngine, build_standard_rules
+    from src.schema_mapper import SchemaMapper
+    from src.security import SecurityMasker
+    from src.transaction_rollback import TransactionManager
+    from src.validator import Validator
 
     audit = AuditLogger(migration_id="test_pipeline")
     canonical = CanonicalStore(db_manager=MagicMock(), encryption_key="test-key")

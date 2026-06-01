@@ -34,6 +34,19 @@ dev = [
 [tool.ruff]
 target-version = "py311"
 line-length = 120
+exclude = [
+    ".claude",
+    ".git",
+    ".venv",
+    "__pycache__",
+    "*.egg-info",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "node_modules",
+    "build",
+    "dist",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]

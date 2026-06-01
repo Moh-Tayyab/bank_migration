@@ -1,4 +1,3 @@
-
 import logging
 import os
 
@@ -24,6 +23,7 @@ class DatabaseManager:
             return
         import psycopg2
         from psycopg2.extras import RealDictCursor
+
         connect_args = {"cursor_factory": RealDictCursor}
         sslmode = os.getenv("DATABASE_SSLMODE", "prefer")
         connect_args["sslmode"] = sslmode

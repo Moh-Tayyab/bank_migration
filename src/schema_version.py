@@ -1,8 +1,9 @@
-from typing import Dict, Optional, List
-from pydantic import BaseModel
-from datetime import datetime
 import json
 import os
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel
 
 
 class SchemaVersion(BaseModel):
@@ -43,15 +44,9 @@ class SchemaVersionManager:
         bank_dir = os.path.join(self._registry_path, bank)
         if not os.path.exists(bank_dir):
             return []
-        return sorted(
-            f.replace(".json", "").lstrip("v")
-            for f in os.listdir(bank_dir)
-            if f.endswith(".json")
-        )
+        return sorted(f.replace(".json", "").lstrip("v") for f in os.listdir(bank_dir) if f.endswith(".json"))
 
-    def migrate_schema(
-        self, bank: str, from_version: str, to_version: str, record: Dict
-    ) -> Dict:
+    def migrate_schema(self, bank: str, from_version: str, to_version: str, record: Dict) -> Dict:
         from_schema = self.load_schema(bank, from_version)
         to_schema = self.load_schema(bank, to_version)
         if not from_schema or not to_schema:

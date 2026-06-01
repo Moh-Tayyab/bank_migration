@@ -1,16 +1,13 @@
 """
 Tests for Transformer — full ETL pipeline integration tests.
 """
-import os
-import pytest
 
 from src.transform import Transformer
-from src.models import Record, AuditEvent
-
 
 # ===========================================================================
 # Transformer Integration Tests
 # ===========================================================================
+
 
 class TestTransformer:
     """Test the full transform pipeline."""
@@ -28,8 +25,20 @@ class TestTransformer:
             mock_components["txn"],
         )
         records = [
-            {"full_name": "Muhammad Tayyab", "dob": "1995-03-15", "account_number": "1234567890123456", "email": "t@test.com", "phone": "03001234567"},
-            {"full_name": "Ali Ahmed", "dob": "1988-07-22", "account_number": "9876543210987654", "email": "a@b.com", "phone": "03219876543"},
+            {
+                "full_name": "Muhammad Tayyab",
+                "dob": "1995-03-15",
+                "account_number": "1234567890123456",
+                "email": "t@test.com",
+                "phone": "03001234567",
+            },
+            {
+                "full_name": "Ali Ahmed",
+                "dob": "1988-07-22",
+                "account_number": "9876543210987654",
+                "email": "a@b.com",
+                "phone": "03219876543",
+            },
         ]
         result = transformer.transform(iter(records), "source_bank", "target_bank")
         assert result.success is True
@@ -57,11 +66,14 @@ class TestTransformer:
     def test_transform_with_validation_rules(self, mock_components):
         """Records failing validation should be counted as failed."""
         from src.validator import Validator
-        strict_validator = Validator(rules={
-            "dob": {"type": "date"},
-            "email": {"type": "email"},
-            "account_number": {"min_length": 5},
-        })
+
+        strict_validator = Validator(
+            rules={
+                "dob": {"type": "date"},
+                "email": {"type": "email"},
+                "account_number": {"min_length": 5},
+            }
+        )
         transformer = Transformer(
             strict_validator,
             mock_components["parser"],
@@ -84,10 +96,13 @@ class TestTransformer:
     def test_transform_failure_threshold_exceeded(self, mock_components):
         """If failure rate exceeds threshold, migration should fail."""
         from src.validator import Validator
-        strict_validator = Validator(rules={
-            "dob": {"type": "date"},
-            "email": {"type": "email"},
-        })
+
+        strict_validator = Validator(
+            rules={
+                "dob": {"type": "date"},
+                "email": {"type": "email"},
+            }
+        )
         transformer = Transformer(
             strict_validator,
             mock_components["parser"],
@@ -112,10 +127,13 @@ class TestTransformer:
     def test_transform_failure_threshold_within_limit(self, mock_components):
         """If failure rate is within threshold, migration should succeed."""
         from src.validator import Validator
-        strict_validator = Validator(rules={
-            "dob": {"type": "date"},
-            "email": {"type": "email"},
-        })
+
+        strict_validator = Validator(
+            rules={
+                "dob": {"type": "date"},
+                "email": {"type": "email"},
+            }
+        )
         transformer = Transformer(
             strict_validator,
             mock_components["parser"],
@@ -129,7 +147,14 @@ class TestTransformer:
         # 10 records, 2 bad = 20% failure rate, threshold = 25%
         records = []
         for i in range(8):
-            records.append({"full_name": f"Good {i}", "dob": "1990-01-01", "account_number": "1234567890123456", "email": f"{i}@b.com"})
+            records.append(
+                {
+                    "full_name": f"Good {i}",
+                    "dob": "1990-01-01",
+                    "account_number": "1234567890123456",
+                    "email": f"{i}@b.com",
+                }
+            )
         records.append({"full_name": "Bad 1", "dob": "INV", "account_number": "!", "email": "bad"})
         records.append({"full_name": "Bad 2", "dob": "INV", "account_number": "!", "email": "bad"})
         result = transformer.transform(iter(records), "source_bank", "target_bank", failure_threshold=0.25)
@@ -140,10 +165,13 @@ class TestTransformer:
     def test_transform_dlq_contains_failed_records(self, mock_components):
         """DLQ should contain details of failed records."""
         from src.validator import Validator
-        strict_validator = Validator(rules={
-            "dob": {"type": "date"},
-            "email": {"type": "email"},
-        })
+
+        strict_validator = Validator(
+            rules={
+                "dob": {"type": "date"},
+                "email": {"type": "email"},
+            }
+        )
         transformer = Transformer(
             strict_validator,
             mock_components["parser"],
@@ -176,7 +204,13 @@ class TestTransformer:
             mock_components["txn"],
         )
         records = [
-            {"full_name": "Test User", "dob": "1990-01-01", "account_number": "1234567890123456", "email": "t@t.com", "phone": "03001234567"},
+            {
+                "full_name": "Test User",
+                "dob": "1990-01-01",
+                "account_number": "1234567890123456",
+                "email": "t@t.com",
+                "phone": "03001234567",
+            },
         ]
         result = transformer.transform(iter(records), "source_bank", "target_bank")
         assert len(result.audit_trail) > 0
@@ -193,9 +227,17 @@ class TestTransformer:
             mock_components["canonical"],
             mock_components["txn"],
         )
+
         def record_generator(count):
             for i in range(count):
-                yield {"full_name": f"User {i}", "dob": "1990-01-01", "account_number": "1234567890123456", "email": f"u{i}@t.com", "phone": "03001234567"}
+                yield {
+                    "full_name": f"User {i}",
+                    "dob": "1990-01-01",
+                    "account_number": "1234567890123456",
+                    "email": f"u{i}@t.com",
+                    "phone": "03001234567",
+                }
+
         result = transformer.transform(record_generator(1000), "source_bank", "target_bank")
         assert result.total_records == 1000
         assert result.processed == 1000
@@ -213,9 +255,17 @@ class TestTransformer:
             mock_components["canonical"],
             mock_components["txn"],
         )
+
         def gen():
             for i in range(5):
-                yield {"full_name": f"User {i}", "dob": "1990-01-01", "account_number": "1234567890123456", "email": f"u{i}@t.com", "phone": "03001234567"}
+                yield {
+                    "full_name": f"User {i}",
+                    "dob": "1990-01-01",
+                    "account_number": "1234567890123456",
+                    "email": f"u{i}@t.com",
+                    "phone": "03001234567",
+                }
+
         # Should work with generator directly
         result = transformer.transform(gen(), "source_bank", "target_bank")
         assert result.total_records == 5

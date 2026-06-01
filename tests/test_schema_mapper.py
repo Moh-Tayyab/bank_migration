@@ -1,16 +1,15 @@
 """
 Tests for SchemaMapper — field mapping and transformations between bank schemas.
 """
-import pytest
 
-from src.schema_mapper import SchemaMapper
-from src.models import Record, MappingRule, BankSchema
+from src.models import BankSchema, Record
 from src.registry import BankRegistry
-
+from src.schema_mapper import SchemaMapper
 
 # ===========================================================================
 # SchemaMapper — Basic Mapping Tests
 # ===========================================================================
+
 
 class TestSchemaMapper:
     """Test SchemaMapper with a configured registry."""
@@ -50,7 +49,7 @@ class TestSchemaMapper:
             source_bank="source_bank",
         )
         mapper = SchemaMapper(registry=bank_registry)
-        result = mapper.map_record(record, "target_bank")
+        mapper.map_record(record, "target_bank")
         # balance→current_balance has no default, so it won't appear if not in source
         # (only mapped fields appear in output)
 
@@ -58,6 +57,7 @@ class TestSchemaMapper:
 # ===========================================================================
 # Transform Function Tests
 # ===========================================================================
+
 
 class TestTransforms:
     """Test individual transform functions."""
@@ -132,6 +132,7 @@ class TestTransforms:
 # ===========================================================================
 # BankRegistry Integration Tests
 # ===========================================================================
+
 
 class TestBankRegistryMapping:
     """Test that BankRegistry correctly provides mappings."""

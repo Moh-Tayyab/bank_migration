@@ -1,5 +1,6 @@
-from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from .models import Record
 
 

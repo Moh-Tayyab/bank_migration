@@ -1,15 +1,14 @@
 """
 Tests for RulesEngine — business rule application.
 """
-import pytest
 
-from src.rules_engine import Rule, RulesEngine, build_standard_rules
 from src.models import Record
-
+from src.rules_engine import Rule, RulesEngine, build_standard_rules
 
 # ===========================================================================
 # Rule Tests
 # ===========================================================================
+
 
 class TestRule:
     """Test individual Rule application."""
@@ -47,6 +46,7 @@ class TestRule:
 # RulesEngine Tests
 # ===========================================================================
 
+
 class TestRulesEngine:
     """Test the RulesEngine container and application."""
 
@@ -58,27 +58,33 @@ class TestRulesEngine:
 
     def test_single_global_rule(self):
         engine = RulesEngine()
-        engine.add_rule(Rule(
-            name="add_flag",
-            condition=lambda d: True,
-            action=lambda d: {**d, "flagged": True},
-        ))
+        engine.add_rule(
+            Rule(
+                name="add_flag",
+                condition=lambda d: True,
+                action=lambda d: {**d, "flagged": True},
+            )
+        )
         record = Record(data={"name": "Test"}, record_id="1", source_bank="bank_a")
         result = engine.apply(record)
         assert result["flagged"] is True
 
     def test_multiple_global_rules(self):
         engine = RulesEngine()
-        engine.add_rule(Rule(
-            name="rule1",
-            condition=lambda d: True,
-            action=lambda d: {**d, "r1": True},
-        ))
-        engine.add_rule(Rule(
-            name="rule2",
-            condition=lambda d: True,
-            action=lambda d: {**d, "r2": True},
-        ))
+        engine.add_rule(
+            Rule(
+                name="rule1",
+                condition=lambda d: True,
+                action=lambda d: {**d, "r1": True},
+            )
+        )
+        engine.add_rule(
+            Rule(
+                name="rule2",
+                condition=lambda d: True,
+                action=lambda d: {**d, "r2": True},
+            )
+        )
         record = Record(data={}, record_id="1", source_bank="bank_a")
         result = engine.apply(record)
         assert result["r1"] is True
@@ -95,9 +101,7 @@ class TestRulesEngine:
             bank="target_bank",
         )
         # Record with matching target_bank
-        record = Record(
-            data={}, record_id="1", source_bank="source_bank", target_bank="target_bank"
-        )
+        record = Record(data={}, record_id="1", source_bank="source_bank", target_bank="target_bank")
         result = engine.apply(record)
         assert result["bank_processed"] is True
 
@@ -111,25 +115,27 @@ class TestRulesEngine:
             ),
             bank="target_bank",
         )
-        record = Record(
-            data={}, record_id="1", source_bank="source_bank", target_bank="other_bank"
-        )
+        record = Record(data={}, record_id="1", source_bank="source_bank", target_bank="other_bank")
         result = engine.apply(record)
         assert "bank_processed" not in result
 
     def test_rule_chaining(self):
         """Rules should apply sequentially — output of one feeds into next."""
         engine = RulesEngine()
-        engine.add_rule(Rule(
-            name="step1",
-            condition=lambda d: "value" in d,
-            action=lambda d: {**d, "value": d["value"] + 1},
-        ))
-        engine.add_rule(Rule(
-            name="step2",
-            condition=lambda d: "value" in d,
-            action=lambda d: {**d, "value": d["value"] * 2},
-        ))
+        engine.add_rule(
+            Rule(
+                name="step1",
+                condition=lambda d: "value" in d,
+                action=lambda d: {**d, "value": d["value"] + 1},
+            )
+        )
+        engine.add_rule(
+            Rule(
+                name="step2",
+                condition=lambda d: "value" in d,
+                action=lambda d: {**d, "value": d["value"] * 2},
+            )
+        )
         record = Record(data={"value": 5}, record_id="1", source_bank="bank_a")
         result = engine.apply(record)
         # (5 + 1) * 2 = 12
@@ -138,11 +144,13 @@ class TestRulesEngine:
     def test_conditional_rule_skipped(self):
         """Rule with false condition should not modify data."""
         engine = RulesEngine()
-        engine.add_rule(Rule(
-            name="conditional",
-            condition=lambda d: d.get("status") == "active",
-            action=lambda d: {**d, "approved": True},
-        ))
+        engine.add_rule(
+            Rule(
+                name="conditional",
+                condition=lambda d: d.get("status") == "active",
+                action=lambda d: {**d, "approved": True},
+            )
+        )
         record = Record(data={"status": "inactive"}, record_id="1", source_bank="bank_a")
         result = engine.apply(record)
         assert "approved" not in result
@@ -150,11 +158,13 @@ class TestRulesEngine:
     def test_engine_copy_constructor(self):
         """RulesEngine(engine) should copy rules."""
         original = RulesEngine()
-        original.add_rule(Rule(
-            name="rule1",
-            condition=lambda d: True,
-            action=lambda d: {**d, "r1": True},
-        ))
+        original.add_rule(
+            Rule(
+                name="rule1",
+                condition=lambda d: True,
+                action=lambda d: {**d, "r1": True},
+            )
+        )
         copy = RulesEngine(original)
         record = Record(data={}, record_id="1", source_bank="bank_a")
         result = copy.apply(record)
@@ -164,6 +174,7 @@ class TestRulesEngine:
 # ===========================================================================
 # Standard Rules Tests
 # ===========================================================================
+
 
 class TestStandardRules:
     """Test the build_standard_rules() preset."""

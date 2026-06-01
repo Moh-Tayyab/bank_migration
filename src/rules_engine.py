@@ -1,4 +1,5 @@
-from typing import Dict, Any, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
+
 from .models import Record
 
 
@@ -15,7 +16,7 @@ class Rule:
 
 
 class RulesEngine:
-    def __init__(self, rules_engine: Optional['RulesEngine'] = None):
+    def __init__(self, rules_engine: Optional["RulesEngine"] = None):
         self._global_rules: List[Rule] = []
         self._bank_rules: Dict[str, List[Rule]] = {}
         if rules_engine is not None:
@@ -45,25 +46,30 @@ class RulesEngine:
 def build_standard_rules() -> RulesEngine:
     engine = RulesEngine()
 
-    engine.add_rule(Rule(
-        name="empty_to_null",
-        condition=lambda d: True,
-        action=lambda d: {k: (v if v != "" else None) for k, v in d.items()},
-    ))
+    engine.add_rule(
+        Rule(
+            name="empty_to_null",
+            condition=lambda d: True,
+            action=lambda d: {k: (v if v != "" else None) for k, v in d.items()},
+        )
+    )
 
-    engine.add_rule(Rule(
-        name="strip_whitespace",
-        condition=lambda d: True,
-        action=lambda d: {k: (v.strip() if isinstance(v, str) else v) for k, v in d.items()},
-    ))
+    engine.add_rule(
+        Rule(
+            name="strip_whitespace",
+            condition=lambda d: True,
+            action=lambda d: {k: (v.strip() if isinstance(v, str) else v) for k, v in d.items()},
+        )
+    )
 
-    engine.add_rule(Rule(
-        name="capitalize_names",
-        condition=lambda d: any(k.endswith("_name") for k in d),
-        action=lambda d: {
-            k: (v.title() if k.endswith("_name") and isinstance(v, str) else v)
-            for k, v in d.items()
-        },
-    ))
+    engine.add_rule(
+        Rule(
+            name="capitalize_names",
+            condition=lambda d: any(k.endswith("_name") for k in d),
+            action=lambda d: {
+                k: (v.title() if k.endswith("_name") and isinstance(v, str) else v) for k, v in d.items()
+            },
+        )
+    )
 
     return engine

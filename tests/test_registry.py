@@ -1,18 +1,18 @@
 """
 Tests for BankRegistry — bank schema registration and versioning.
 """
+
 import os
-import json
+
 import pytest
 
-from src.registry import BankRegistry
 from src.models import BankSchema, MappingRule
 from src.schema_version import SchemaVersionManager
-
 
 # ===========================================================================
 # BankRegistry Tests
 # ===========================================================================
+
 
 class TestBankRegistry:
     """Test BankRegistry with the configured bank schemas."""
@@ -122,6 +122,7 @@ class TestBankRegistry:
 # ===========================================================================
 # SchemaVersionManager Tests
 # ===========================================================================
+
 
 class TestSchemaVersionManager:
     """Test schema versioning."""

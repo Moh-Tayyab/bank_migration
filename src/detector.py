@@ -1,9 +1,8 @@
-import json
 import csv
+import json
 import os
-import io
-import xml.etree.ElementTree as ET
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from .models import FileFormat
 
 
@@ -53,7 +52,9 @@ class FormatDetector:
         with open(filepath, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                records.append({k.strip() if k else f"extra_{i}": v.strip() if v else "" for i, (k, v) in enumerate(row.items())})
+                records.append(
+                    {k.strip() if k else f"extra_{i}": v.strip() if v else "" for i, (k, v) in enumerate(row.items())}
+                )
         return records
 
     @staticmethod
@@ -67,6 +68,7 @@ class FormatDetector:
     @staticmethod
     def _extract_docx(filepath: str) -> List[Dict[str, Any]]:
         from docx import Document
+
         doc = Document(filepath)
         records = []
         headers = []
@@ -86,6 +88,7 @@ class FormatDetector:
     @staticmethod
     def _extract_xlsx(filepath: str) -> List[Dict[str, Any]]:
         import openpyxl
+
         wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
         ws = wb.active
         records = []
@@ -106,6 +109,7 @@ class FormatDetector:
     @staticmethod
     def _extract_xml(filepath: str) -> List[Dict[str, Any]]:
         import defusedxml.ElementTree as safe_ET
+
         tree = safe_ET.parse(filepath)
         root = tree.getroot()
         records = []

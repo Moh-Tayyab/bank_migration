@@ -1,19 +1,22 @@
-from typing import Dict, Any, List, Optional, Iterator
 from datetime import datetime
-from pathlib import Path
-from .models import Record, CanonicalRecord, MigrationResult, AuditEvent
-from .detector import FormatDetector
-from .validator import Validator
-from .parser import Parser
-from .schema_mapper import SchemaMapper
-from .rules_engine import RulesEngine, build_standard_rules
-from .security import SecurityMasker
+from typing import Any, Dict, Iterator, List
+
 from .audit_logger import AuditLogger
 from .canonical_store import CanonicalStore
+from .detector import FormatDetector
+from .models import AuditEvent, CanonicalRecord, MigrationResult, Record
+from .parser import Parser
+from .rules_engine import build_standard_rules
+from .schema_mapper import SchemaMapper
+from .security import SecurityMasker
 from .transaction_rollback import TransactionManager
+from .validator import Validator
+
 
 class Transformer:
-    def __init__(self, validator=None, parser=None, mapper=None, rules=None, masker=None, audit=None, canonical=None, txn=None):
+    def __init__(
+        self, validator=None, parser=None, mapper=None, rules=None, masker=None, audit=None, canonical=None, txn=None
+    ):
         self._validator = validator or Validator()
         self._parser = parser or Parser()
         self._mapper = mapper or SchemaMapper()
@@ -24,7 +27,9 @@ class Transformer:
         self._txn = txn or TransactionManager()
         self._committed_records: List[Dict[str, Any]] = []
 
-    def process_file(self, filepath: str, source_bank: str, target_bank: str, failure_threshold: float = 0.05) -> MigrationResult:
+    def process_file(
+        self, filepath: str, source_bank: str, target_bank: str, failure_threshold: float = 0.05
+    ) -> MigrationResult:
         """Process a file from start to finish."""
         started_at = datetime.utcnow()
         try:
@@ -37,7 +42,7 @@ class Transformer:
                 AuditEvent.TRANSFORM,
                 record_id="",
                 bank_pair=f"{source_bank}->{target_bank}",
-                details=f"Started processing file: {filepath} ({len(records)} records)"
+                details=f"Started processing file: {filepath} ({len(records)} records)",
             )
 
             # Transform records using the existing transform method
@@ -52,15 +57,17 @@ class Transformer:
                     AuditEvent.COMMITTED,
                     record_id="",
                     bank_pair=f"{source_bank}->{target_bank}",
-                    details=f"Successfully processed {result.processed}/{result.total_records} records from {filepath}"
+                    details=f"Successfully processed {result.processed}/{result.total_records} records from {filepath}",
                 )
             else:
-                result.error = f"Failure rate {result.failed/result.total_records:.2%} exceeds threshold {failure_threshold:.2%}"
+                result.error = (
+                    f"Failure rate {result.failed / result.total_records:.2%} exceeds threshold {failure_threshold:.2%}"
+                )
                 self._audit.log(
                     AuditEvent.ROLLED_BACK,
                     record_id="",
                     bank_pair=f"{source_bank}->{target_bank}",
-                    details=result.error
+                    details=result.error,
                 )
 
             return result
@@ -70,7 +77,7 @@ class Transformer:
                 AuditEvent.ERROR,
                 record_id="",
                 bank_pair=f"{source_bank}->{target_bank}",
-                details=f"File processing failed: {str(e)}"
+                details=f"File processing failed: {str(e)}",
             )
             return MigrationResult(
                 success=False,
@@ -80,10 +87,12 @@ class Transformer:
                 audit_trail=self._audit.get_trail(),
                 started_at=started_at,
                 completed_at=completed_at,
-                error=str(e)
+                error=str(e),
             )
 
-    def process_records(self, records: List[Dict[str, Any]], source_bank: str, target_bank: str, failure_threshold: float = 0.05) -> MigrationResult:
+    def process_records(
+        self, records: List[Dict[str, Any]], source_bank: str, target_bank: str, failure_threshold: float = 0.05
+    ) -> MigrationResult:
         """Process a list of records from start to finish."""
         started_at = datetime.utcnow()
         try:
@@ -91,7 +100,7 @@ class Transformer:
                 AuditEvent.TRANSFORM,
                 record_id="",
                 bank_pair=f"{source_bank}->{target_bank}",
-                details=f"Started processing {len(records)} records"
+                details=f"Started processing {len(records)} records",
             )
 
             # Transform records
@@ -106,15 +115,17 @@ class Transformer:
                     AuditEvent.COMMITTED,
                     record_id="",
                     bank_pair=f"{source_bank}->{target_bank}",
-                    details=f"Successfully processed {result.processed}/{result.total_records} records"
+                    details=f"Successfully processed {result.processed}/{result.total_records} records",
                 )
             else:
-                result.error = f"Failure rate {result.failed/result.total_records:.2%} exceeds threshold {failure_threshold:.2%}"
+                result.error = (
+                    f"Failure rate {result.failed / result.total_records:.2%} exceeds threshold {failure_threshold:.2%}"
+                )
                 self._audit.log(
                     AuditEvent.ROLLED_BACK,
                     record_id="",
                     bank_pair=f"{source_bank}->{target_bank}",
-                    details=result.error
+                    details=result.error,
                 )
 
             return result
@@ -124,7 +135,7 @@ class Transformer:
                 AuditEvent.ERROR,
                 record_id="",
                 bank_pair=f"{source_bank}->{target_bank}",
-                details=f"Record processing failed: {str(e)}"
+                details=f"Record processing failed: {str(e)}",
             )
             return MigrationResult(
                 success=False,
@@ -134,18 +145,24 @@ class Transformer:
                 audit_trail=self._audit.get_trail(),
                 started_at=started_at,
                 completed_at=completed_at,
-                error=str(e)
+                error=str(e),
             )
 
     def get_committed_records(self) -> List[Dict[str, Any]]:
         """Get the processed and committed records."""
-        return self._txn._committed if hasattr(self._txn, '_committed') else self._committed_records
+        return self._txn._committed if hasattr(self._txn, "_committed") else self._committed_records
 
-    def transform(self, records_iterator: Iterator[Dict[str, Any]], source_bank: str, target_bank: str, failure_threshold: float = 0.05) -> MigrationResult:
+    def transform(
+        self,
+        records_iterator: Iterator[Dict[str, Any]],
+        source_bank: str,
+        target_bank: str,
+        failure_threshold: float = 0.05,
+    ) -> MigrationResult:
         processed, failed = 0, 0
         self._txn.begin()
         for i, raw in enumerate(records_iterator):
-            record_id = f"REC-{i+1:06d}"
+            record_id = f"REC-{i + 1:06d}"
             try:
                 record = Record(data=raw, record_id=record_id, source_bank=source_bank)
                 validation = self._validator.validate(record)
@@ -157,7 +174,12 @@ class Transformer:
                 record.data = parsed
                 record = self._mapper.map_record(record, target_bank)
                 transformed = self._rules.apply(record)
-                canonical = CanonicalRecord(record_id=record_id, raw_data=raw, canonical_data=dict(transformed) if isinstance(transformed, dict) else dict(record.data), source_bank=source_bank)
+                canonical = CanonicalRecord(
+                    record_id=record_id,
+                    raw_data=raw,
+                    canonical_data=dict(transformed) if isinstance(transformed, dict) else dict(record.data),
+                    source_bank=source_bank,
+                )
                 self._canonical.store(canonical)
                 masked = self._masker.mask(transformed, record_id)
                 self._txn.savepoint(record_id, masked)
@@ -172,4 +194,12 @@ class Transformer:
             self._txn.commit()
         else:
             self._txn.rollback()
-        return MigrationResult(success=failure_rate <= failure_threshold, total_records=total, processed=processed, failed=failed, records=self.get_committed_records() if failure_rate <= failure_threshold else [], audit_trail=self._audit.get_trail(), dlq=self._txn.get_failed_records())
+        return MigrationResult(
+            success=failure_rate <= failure_threshold,
+            total_records=total,
+            processed=processed,
+            failed=failed,
+            records=self.get_committed_records() if failure_rate <= failure_threshold else [],
+            audit_trail=self._audit.get_trail(),
+            dlq=self._txn.get_failed_records(),
+        )

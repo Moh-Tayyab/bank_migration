@@ -1,17 +1,19 @@
 """
 Tests for AuditLogger — immutable audit trail logging.
 """
-import os
+
 import json
+import os
+
 import pytest
 
 from src.audit_logger import AuditLogger
 from src.models import AuditEvent
 
-
 # ===========================================================================
 # Basic Logging Tests
 # ===========================================================================
+
 
 class TestAuditLogger:
     """Test basic audit logging functionality."""
@@ -65,6 +67,7 @@ class TestAuditLogger:
 # File Persistence Tests
 # ===========================================================================
 
+
 class TestAuditFilePersistence:
     """Test that audit entries are written to disk."""
 
@@ -105,6 +108,7 @@ class TestAuditFilePersistence:
 # Migration ID Tests
 # ===========================================================================
 
+
 class TestMigrationId:
     """Test migration ID generation and usage."""
 
@@ -125,18 +129,22 @@ class TestMigrationId:
 # All Audit Event Types
 # ===========================================================================
 
+
 class TestAllEventTypes:
     """Test that all AuditEvent enum values can be logged."""
 
-    @pytest.mark.parametrize("event", [
-        AuditEvent.VALIDATION,
-        AuditEvent.MAPPING,
-        AuditEvent.TRANSFORM,
-        AuditEvent.SECURITY_MASK,
-        AuditEvent.ERROR,
-        AuditEvent.COMMITTED,
-        AuditEvent.ROLLED_BACK,
-    ])
+    @pytest.mark.parametrize(
+        "event",
+        [
+            AuditEvent.VALIDATION,
+            AuditEvent.MAPPING,
+            AuditEvent.TRANSFORM,
+            AuditEvent.SECURITY_MASK,
+            AuditEvent.ERROR,
+            AuditEvent.COMMITTED,
+            AuditEvent.ROLLED_BACK,
+        ],
+    )
     def test_log_all_event_types(self, audit_logger, event):
         entry = audit_logger.log(event, record_id="REC-001")
         assert entry.event == event

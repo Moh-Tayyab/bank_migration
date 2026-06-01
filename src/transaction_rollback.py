@@ -1,6 +1,7 @@
-from typing import Dict, Any, List, Optional, Iterator
 import copy
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 
 class TransactionManager:
     def __init__(self):

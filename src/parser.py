@@ -1,6 +1,6 @@
 import re
-from typing import Dict, Any, Tuple, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class Parser:
@@ -32,9 +32,17 @@ class Parser:
             except ValueError:
                 pass
         input_formats = [
-            "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y", "%d/%m/%Y",
-            "%Y/%m/%d", "%Y%m%d", "%d %b %Y", "%d %B %Y",
-            "%m-%d-%Y", "%Y.%m.%d", "%d.%m.%Y",
+            "%Y-%m-%d",
+            "%d-%m-%Y",
+            "%m/%d/%Y",
+            "%d/%m/%Y",
+            "%Y/%m/%d",
+            "%Y%m%d",
+            "%d %b %Y",
+            "%d %B %Y",
+            "%m-%d-%Y",
+            "%Y.%m.%d",
+            "%d.%m.%Y",
         ]
         for fmt in input_formats:
             try:
@@ -56,7 +64,7 @@ class Parser:
             result["city"] = parts[1]
         if len(parts) >= 3:
             zip_state = parts[2].strip()
-            zip_match = re.search(r'(\d{4,10})', zip_state)
+            zip_match = re.search(r"(\d{4,10})", zip_state)
             if zip_match:
                 result["zip"] = zip_match.group(1)
                 result["state"] = zip_state.replace(zip_match.group(1), "").strip()
@@ -71,14 +79,25 @@ class Parser:
         if not amount:
             return ("", 0.0)
         amount = str(amount).strip()
-        currency_map = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₨": "PKR", "Rs": "PKR", "PKR": "PKR", "USD": "USD", "EUR": "EUR", "GBP": "GBP"}
+        currency_map = {
+            "$": "USD",
+            "€": "EUR",
+            "£": "GBP",
+            "¥": "JPY",
+            "₨": "PKR",
+            "Rs": "PKR",
+            "PKR": "PKR",
+            "USD": "USD",
+            "EUR": "EUR",
+            "GBP": "GBP",
+        }
         symbol = ""
         for sym, code in currency_map.items():
             if amount.startswith(sym) or amount.startswith(sym.lower()):
                 symbol = code
-                amount = amount[len(sym):].strip()
+                amount = amount[len(sym) :].strip()
                 break
-        amount_clean = re.sub(r'[^\d.,]', '', amount)
+        amount_clean = re.sub(r"[^\d.,]", "", amount)
         if "," in amount_clean and "." in amount_clean:
             if amount_clean.rindex(",") > amount_clean.rindex("."):
                 amount_clean = amount_clean.replace(".", "").replace(",", ".")

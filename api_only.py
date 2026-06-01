@@ -1,25 +1,25 @@
-import uvicorn
-import logging
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Security, Request
-from fastapi.security import APIKeyHeader
-from fastapi.responses import FileResponse
-from typing import Optional, List
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from fastapi.middleware.cors import CORSMiddleware
-import os
-import uuid
 import json
+import logging
 import mimetypes
+import os
 import re
-from pathlib import Path
+import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
-from src.models import FileFormat
-from src.production import PipelineOrchestrator
+from typing import Optional
+
+import uvicorn
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Security, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.security import APIKeyHeader
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
 from src.config import settings
 from src.infrastructure.retention import DataRetentionPolicy
+from src.production import PipelineOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,8 @@ async def verify_api_key(api_key: str = Security(_api_key_header)):
 
 def _get_celery_tasks():
     try:
-        from src.infrastructure.tasks import run_full_migration_task, run_data_migration_task, run_multi_migration_task
+        from src.infrastructure.tasks import run_data_migration_task, run_full_migration_task, run_multi_migration_task
+
         return run_full_migration_task, run_data_migration_task, run_multi_migration_task
     except Exception:
         logger.debug("Celery tasks not available, falling back to synchronous processing")
@@ -56,8 +57,10 @@ async def lifespan(app: FastAPI):
             if report.total_deleted > 0:
                 logger.info(
                     "Startup cleanup: deleted %d uploads, %d output, %d audit, %d canonical",
-                    report.uploads_deleted, report.output_deleted,
-                    report.audit_deleted, report.canonical_deleted,
+                    report.uploads_deleted,
+                    report.output_deleted,
+                    report.audit_deleted,
+                    report.canonical_deleted,
                 )
         except Exception as e:
             logger.warning("Startup cleanup failed (non-fatal): %s", e)
@@ -91,6 +94,7 @@ def get_schema_ai():
     global _schema_ai
     if _schema_ai is None:
         from src.ai.schema_agent import SchemaIntelligenceAgent
+
         _schema_ai = SchemaIntelligenceAgent()
     return _schema_ai
 
@@ -99,6 +103,7 @@ def get_anomaly_ai():
     global _anomaly_ai
     if _anomaly_ai is None:
         from src.ai.anomaly_agent import AnomalyDetectionAgent
+
         _anomaly_ai = AnomalyDetectionAgent()
     return _anomaly_ai
 
@@ -119,6 +124,7 @@ async def migrate_upload(
     output_format: Optional[str] = Form("json"),
 ):
     import json as _json
+
     banks = _json.loads(target_banks) if isinstance(target_banks, str) else target_banks
     os.makedirs(settings.upload_dir, exist_ok=True)
     safe_filename = os.path.basename(file.filename or "upload")
@@ -146,11 +152,15 @@ async def migrate_upload(
                 try:
                     task = run_full.delay(filepath, source_bank, banks[0], output_format)
                     celery_dispatched = True
+                    task_id = task.id
                     return {
-                        "task_id": task.id,
+                        "task_id": task_id,
                         "status": "queued",
-                        "message": f"Migration to {len(banks)} target bank(s) started in background. Use /status/{task_id} to check progress.",
-                        "file_id": file_id
+                        "message": (
+                            f"Migration to {len(banks)} target bank(s) started in "
+                            f"background. Use /status/{task_id} to check progress."
+                        ),
+                        "file_id": file_id,
                     }
                 except Exception:
                     logger.debug("Celery task dispatch failed, running synchronously")
@@ -162,11 +172,15 @@ async def migrate_upload(
                 try:
                     task = run_multi.delay(filepath, source_bank, banks, output_format)
                     celery_dispatched = True
+                    task_id = task.id
                     return {
-                        "task_id": task.id,
+                        "task_id": task_id,
                         "status": "queued",
-                        "message": f"Migration to {len(banks)} target bank(s) started in background. Use /status/{task_id} to check progress.",
-                        "file_id": file_id
+                        "message": (
+                            f"Migration to {len(banks)} target bank(s) started in "
+                            f"background. Use /status/{task_id} to check progress."
+                        ),
+                        "file_id": file_id,
                     }
                 except Exception:
                     logger.debug("Celery multi-task dispatch failed, running synchronously")
@@ -174,7 +188,7 @@ async def migrate_upload(
             return json.loads(result.model_dump_json())
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Migration failed")
         raise HTTPException(status_code=500, detail="Migration failed. Check server logs for details.")
     finally:
@@ -192,6 +206,7 @@ async def migrate_data(
     _auth=Depends(verify_api_key),
 ):
     import json as _json
+
     body = await request.json()
     records = body.get("records", [])
     source_bank = body.get("source_bank", "")
@@ -234,11 +249,12 @@ async def migrate_data(
 async def get_task_status(request: Request, task_id: str, _auth=Depends(verify_api_key)):
     try:
         from src.infrastructure.celery_app import app as celery_app
+
         task_result = celery_app.AsyncResult(task_id)
         response = {
             "task_id": task_id,
             "status": task_result.status,
-            "result": task_result.result if task_result.ready() else None
+            "result": task_result.result if task_result.ready() else None,
         }
         return response
     except Exception:
@@ -487,9 +503,9 @@ async def generate_sqlldr_script(
             "",
             "# ==================== DATABASE CONNECTION ====================",
             "# Update this with your Oracle database connection details",
-            "DB_USER=\"your_username\"",
-            "DB_PASS=\"your_password\"",
-            "DB_CONNECT=\"your_database\"",
+            'DB_USER="your_username"',
+            'DB_PASS="your_password"',
+            'DB_CONNECT="your_database"',
             "",
             "# ==================== RUN SQL*LOADER ====================",
             "",
@@ -523,15 +539,17 @@ async def generate_sqlldr_script(
             row_values = [escape_csv(record.get(col)) for col in columns]
             script_lines.append(",".join(row_values))
 
-        script_lines.extend([
-            "EOF",
-            "",
-            "# ==================== STATUS ====================",
-            "echo 'SQL*Loader completed. Check migration.log for details.'",
-            "if [ -f migration.bad ]; then",
-            "    echo 'Rejected records: ' $(wc -l < migration.bad)",
-            "fi",
-        ])
+        script_lines.extend(
+            [
+                "EOF",
+                "",
+                "# ==================== STATUS ====================",
+                "echo 'SQL*Loader completed. Check migration.log for details.'",
+                "if [ -f migration.bad ]; then",
+                "    echo 'Rejected records: ' $(wc -l < migration.bad)",
+                "fi",
+            ]
+        )
 
         with open(script_path, "w") as f:
             f.write("\n".join(script_lines))
@@ -573,7 +591,9 @@ async def get_audit(request: Request, migration_id: str, _auth=Depends(verify_ap
 async def export_audit_csv(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     import csv
     import io
+
     from fastapi.responses import StreamingResponse
+
     trail = orchestrator.get_audit_trail(migration_id)
     output = io.StringIO()
     writer = csv.writer(output)
@@ -608,7 +628,8 @@ async def admin_cleanup(
     else:
         report = policy.run_all()
         return {
-            "target": "all", "dry_run": dry_run,
+            "target": "all",
+            "dry_run": dry_run,
             "uploads_deleted": report.uploads_deleted,
             "output_deleted": report.output_deleted,
             "audit_deleted": report.audit_deleted,
@@ -620,6 +641,7 @@ async def admin_cleanup(
 
 # --- AI Orchestration Endpoints ---
 
+
 @app.post("/ai/suggest-mapping")
 @limiter.limit("5/minute")
 async def ai_suggest_mapping(
@@ -627,7 +649,7 @@ async def ai_suggest_mapping(
     _auth=Depends(verify_api_key),
     source_bank: str = Form(...),
     target_bank: str = Form(...),
-    target_docs: str = Form(...)
+    target_docs: str = Form(...),
 ):
     """
     AI analyzes target bank docs and suggests a schema mapping.
@@ -635,7 +657,7 @@ async def ai_suggest_mapping(
     try:
         suggestion = get_schema_ai().suggest_mapping(source_bank, target_bank, target_docs)
         return {"suggestion": suggestion}
-    except Exception as e:
+    except Exception:
         logger.exception("AI schema suggestion failed")
         raise HTTPException(status_code=500, detail="Failed to generate schema suggestion.")
 
@@ -649,7 +671,7 @@ async def ai_apply_mapping(request: Request, suggestion: dict, _auth=Depends(ver
     try:
         path = get_schema_ai().apply_suggestion(suggestion)
         return {"status": "success", "saved_at": path}
-    except Exception as e:
+    except Exception:
         logger.exception("AI mapping application failed")
         raise HTTPException(status_code=400, detail="Failed to apply schema mapping.")
 
@@ -663,7 +685,7 @@ async def ai_analyze_anomaly(request: Request, migration_id: str, _auth=Depends(
     try:
         analysis = get_anomaly_ai().analyze_audit_trail(migration_id)
         return analysis
-    except Exception as e:
+    except Exception:
         logger.exception("AI anomaly analysis failed")
         raise HTTPException(status_code=500, detail="Failed to analyze audit trail.")
 

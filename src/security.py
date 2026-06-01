@@ -1,7 +1,8 @@
 import re
-from typing import Dict, Any, List, Optional
-from .models import AuditEvent
+from typing import Any, Dict, Optional
+
 from .audit_logger import AuditLogger
+from .models import AuditEvent
 
 
 class SecurityMasker:
@@ -54,12 +55,12 @@ class SecurityMasker:
 
     def _auto_detect_patterns(self) -> Dict[str, str]:
         return {
-            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b': "mask_email",
-            r'\b\d{16}\b': "show_last_4",
-            r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b': "show_last_4",
-            r'\b\d{13}\b': "show_last_4",
-            r'\b\d{3}-\d{3}-\d{4}\b': "show_last_4",
-            r'\b\d{5}-\d{7}-\d\b': "show_last_4",
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b": "mask_email",
+            r"\b\d{16}\b": "show_last_4",
+            r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b": "show_last_4",
+            r"\b\d{13}\b": "show_last_4",
+            r"\b\d{3}-\d{3}-\d{4}\b": "show_last_4",
+            r"\b\d{5}-\d{7}-\d\b": "show_last_4",
         }
 
     def _apply_rule(self, value: str, rule: str) -> str:
@@ -76,7 +77,7 @@ class SecurityMasker:
         return value
 
     def _mask_show_last_4(self, value: str) -> str:
-        digits = re.sub(r'\D', '', value)
+        digits = re.sub(r"\D", "", value)
         if len(digits) <= 4:
             return value
         masked_digits = "*" * (len(digits) - 4) + digits[-4:]
@@ -91,7 +92,7 @@ class SecurityMasker:
         return "".join(result)
 
     def _mask_show_last_6(self, value: str) -> str:
-        digits = re.sub(r'\D', '', value)
+        digits = re.sub(r"\D", "", value)
         if len(digits) <= 6:
             return value
         return "*" * (len(digits) - 6) + digits[-6:]

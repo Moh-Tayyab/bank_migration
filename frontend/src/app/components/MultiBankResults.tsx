@@ -37,6 +37,7 @@ export default function MultiBankResults({ multiResults, apiBase }: Props) {
                       <Icon name="download" className="w-3 h-3" />Download
                     </a>
                     <DownloadCommand filename={r.output_path.split("/").pop()!} apiBase={apiBase} />
+                    <DownloadCommand filename={r.output_path.split("/").pop()!} apiBase={apiBase} type="sh-curl" />
                   </>
                 )}
                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${r.success ? "bg-[var(--success-light)] text-[var(--success)]" : "bg-[var(--error-light)] text-[var(--error)]"}`}>

@@ -2,31 +2,36 @@
 Tests for FormatDetector — format auto-detection and data extraction.
 Covers: CSV, JSON, DOCX, XLSX, XML, TXT formats.
 """
-import os
+
 import json
+import os
+
 import pytest
 
 from src.detector import FormatDetector
 from src.models import FileFormat
 
-
 # ===========================================================================
 # Format Detection Tests
 # ===========================================================================
 
+
 class TestFormatDetection:
     """Test that FormatDetector correctly identifies file formats from extensions."""
 
-    @pytest.mark.parametrize("filename,expected", [
-        ("data.csv", FileFormat.CSV),
-        ("data.json", FileFormat.JSON),
-        ("data.docx", FileFormat.DOCX),
-        ("data.xlsx", FileFormat.XLSX),
-        ("data.xml", FileFormat.XML),
-        ("data.txt", FileFormat.TXT),
-        ("DATA.CSV", FileFormat.CSV),       # uppercase extension
-        ("Data.Json", FileFormat.JSON),     # mixed case
-    ])
+    @pytest.mark.parametrize(
+        "filename,expected",
+        [
+            ("data.csv", FileFormat.CSV),
+            ("data.json", FileFormat.JSON),
+            ("data.docx", FileFormat.DOCX),
+            ("data.xlsx", FileFormat.XLSX),
+            ("data.xml", FileFormat.XML),
+            ("data.txt", FileFormat.TXT),
+            ("DATA.CSV", FileFormat.CSV),  # uppercase extension
+            ("Data.Json", FileFormat.JSON),  # mixed case
+        ],
+    )
     def test_detect_format_by_extension(self, filename, expected):
         fmt = FormatDetector.detect_format(filename)
         assert fmt == expected
@@ -47,6 +52,7 @@ class TestFormatDetection:
 # ===========================================================================
 # CSV Extraction Tests
 # ===========================================================================
+
 
 class TestCSVExtraction:
     """Test CSV file extraction."""
@@ -91,6 +97,7 @@ class TestCSVExtraction:
 # JSON Extraction Tests
 # ===========================================================================
 
+
 class TestJSONExtraction:
     """Test JSON file extraction."""
 
@@ -119,6 +126,7 @@ class TestJSONExtraction:
 # XML Extraction Tests
 # ===========================================================================
 
+
 class TestXMLExtraction:
     """Test XML file extraction."""
 
@@ -143,6 +151,7 @@ class TestXMLExtraction:
 # TXT Extraction Tests
 # ===========================================================================
 
+
 class TestTXTExtraction:
     """Test TXT file extraction."""
 
@@ -166,6 +175,7 @@ class TestTXTExtraction:
 # XLSX Extraction Tests
 # ===========================================================================
 
+
 class TestXLSXExtraction:
     """Test XLSX file extraction."""
 
@@ -177,6 +187,7 @@ class TestXLSXExtraction:
     def test_extract_xlsx_generates_column_names(self, sample_dir):
         """XLSX with None header cells should generate col_N names."""
         from openpyxl import Workbook
+
         path = os.path.join(sample_dir, "no_headers.xlsx")
         wb = Workbook()
         ws = wb.active
@@ -194,6 +205,7 @@ class TestXLSXExtraction:
 # DOCX Extraction Tests
 # ===========================================================================
 
+
 class TestDOCXExtraction:
     """Test DOCX file extraction."""
 
@@ -206,6 +218,7 @@ class TestDOCXExtraction:
     def test_extract_docx_no_table_uses_paragraphs(self, sample_dir):
         """DOCX without tables should extract paragraph text."""
         from docx import Document
+
         path = os.path.join(sample_dir, "no_table.docx")
         doc = Document()
         doc.add_paragraph("Hello World")
@@ -219,6 +232,7 @@ class TestDOCXExtraction:
 # ===========================================================================
 # Format Override Tests
 # ===========================================================================
+
 
 class TestFormatOverride:
     """Test that explicit format parameter overrides auto-detection."""

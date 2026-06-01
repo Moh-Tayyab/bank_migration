@@ -1,15 +1,14 @@
 """
 Tests for Validator — field-level validation with configurable rules.
 """
-import pytest
 
-from src.validator import Validator, ValidationResult, ValidationError
 from src.models import Record
-
+from src.validator import ValidationError, ValidationResult, Validator
 
 # ===========================================================================
 # ValidationResult Tests
 # ===========================================================================
+
 
 class TestValidationResult:
     """Test the ValidationResult container."""
@@ -44,6 +43,7 @@ class TestValidationResult:
 # ValidationError Tests
 # ===========================================================================
 
+
 class TestValidationError:
     """Test the ValidationError exception."""
 
@@ -57,6 +57,7 @@ class TestValidationError:
 # ===========================================================================
 # Validator — Required Field Tests
 # ===========================================================================
+
 
 class TestRequiredValidation:
     """Test required field validation."""
@@ -95,6 +96,7 @@ class TestRequiredValidation:
 # ===========================================================================
 # Validator — Type Checking Tests
 # ===========================================================================
+
 
 class TestTypeValidation:
     """Test field type validation."""
@@ -152,6 +154,7 @@ class TestTypeValidation:
 # Validator — Length Tests
 # ===========================================================================
 
+
 class TestLengthValidation:
     """Test min_length and max_length validation."""
 
@@ -184,6 +187,7 @@ class TestLengthValidation:
 # Validator — Allowed Values Tests
 # ===========================================================================
 
+
 class TestAllowedValues:
     """Test allowed_values (enum) validation."""
 
@@ -203,6 +207,7 @@ class TestAllowedValues:
 # ===========================================================================
 # Validator — Batch Validation Tests
 # ===========================================================================
+
 
 class TestBatchValidation:
     """Test validate_batch() for multiple records."""
@@ -224,6 +229,7 @@ class TestBatchValidation:
 # ===========================================================================
 # Validator — No Rules Tests
 # ===========================================================================
+
 
 class TestNoRules:
     """Test validator with no rules — everything should pass."""

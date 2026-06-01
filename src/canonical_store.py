@@ -1,16 +1,15 @@
-
+import base64
 import logging
+import os
+from typing import Dict, List, Optional
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
-import json
-import os
-from typing import Dict, Optional, List
-from datetime import datetime
+
 from .config import settings
-from .models import CanonicalRecord
 from .infrastructure.db import DatabaseManager
+from .models import CanonicalRecord
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +107,11 @@ class CanonicalStore:
             return self._memory_store.store(record)
         data = record.model_dump_json().encode()
         encrypted = self._fernet.encrypt(data)
-        query = "INSERT INTO canonical_records (record_id, encrypted_data, source_bank) VALUES (%s, %s, %s) ON CONFLICT (record_id) DO UPDATE SET encrypted_data = EXCLUDED.encrypted_data"
+        query = (
+            "INSERT INTO canonical_records (record_id, encrypted_data, source_bank) "
+            "VALUES (%s, %s, %s) ON CONFLICT (record_id) DO UPDATE SET "
+            "encrypted_data = EXCLUDED.encrypted_data"
+        )
         self.db.execute(query, (record.record_id, encrypted, record.source_bank))
         record.encrypted = True
         return record.record_id
@@ -120,7 +123,7 @@ class CanonicalStore:
         res = self.db.execute(query, (record_id,))
         if not res:
             return None
-        encrypted = bytes(res[0]['encrypted_data'])
+        encrypted = bytes(res[0]["encrypted_data"])
         decrypted = self._fernet.decrypt(encrypted)
         return CanonicalRecord.model_validate_json(decrypted)
 
@@ -136,4 +139,4 @@ class CanonicalStore:
             return self._memory_store.list_records()
         query = "SELECT record_id FROM canonical_records"
         res = self.db.execute(query)
-        return [r['record_id'] for r in res] if res else []
+        return [r["record_id"] for r in res] if res else []
