@@ -51,14 +51,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <div className="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm" style={{ pointerEvents: "none" }}>
+      <div className="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm" aria-live="polite" aria-label="Notifications" style={{ pointerEvents: "none" }}>
         {toasts.map((t) => (
-          <div key={t.id} className={`card-elevated border-l-[3px] ${borderColors[t.type]} animate-slide-in-right p-3.5 flex items-start gap-2.5`} style={{ pointerEvents: "auto" }}>
-            <div className={`${iconColors[t.type]} shrink-0 mt-0.5`}>
+          <div key={t.id} className={`card-elevated border-l-[3px] ${borderColors[t.type]} animate-slide-in-right p-3.5 flex items-start gap-2.5`} style={{ pointerEvents: "auto" }} role="status">
+            <div className={`${iconColors[t.type]} shrink-0 mt-0.5`} aria-hidden="true">
               <Icon name={icons[t.type]} className="w-4 h-4" />
             </div>
             <p className="text-sm text-[var(--foreground)] flex-1 leading-snug">{t.message}</p>
-            <button onClick={() => remove(t.id)} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] shrink-0 cursor-pointer">
+            <button onClick={() => remove(t.id)} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] shrink-0 cursor-pointer" aria-label="Dismiss notification">
               <Icon name="close" className="w-3.5 h-3.5" />
             </button>
           </div>

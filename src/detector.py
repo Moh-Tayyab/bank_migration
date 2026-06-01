@@ -53,7 +53,7 @@ class FormatDetector:
         with open(filepath, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                records.append({k.strip(): v.strip() if v else "" for k, v in row.items()})
+                records.append({k.strip() if k else f"extra_{i}": v.strip() if v else "" for i, (k, v) in enumerate(row.items())})
         return records
 
     @staticmethod

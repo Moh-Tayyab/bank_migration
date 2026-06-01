@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Icon from "./Icon";
+import { apiHeaders } from "./types";
 
 interface SchemaPreviewProps {
   sourceBank: string;
@@ -17,6 +18,15 @@ interface MappingInfo {
   isDefault: boolean;
 }
 
+function normalizeMapping(m: Record<string, unknown>): MappingInfo {
+  return {
+    sourceField: (m.sourceField || m.source_field || "") as string,
+    targetField: (m.targetField || m.target_field || "") as string,
+    transform: (m.transform || undefined) as string | undefined,
+    isDefault: Boolean(m.default),
+  };
+}
+
 export default function SchemaPreview({ sourceBank, targetBanks, sourceColumns, banks, apiBase }: SchemaPreviewProps) {
   const [mappings, setMappings] = useState<Record<string, MappingInfo[]>>({});
   const [loading, setLoading] = useState(false);
@@ -29,9 +39,14 @@ export default function SchemaPreview({ sourceBank, targetBanks, sourceColumns, 
       const result: Record<string, MappingInfo[]> = {};
       for (const target of targetBanks) {
         try {
-          const res = await fetch(`${apiBase}/schema/${sourceBank}/${target}`);
-          if (res.ok) { const data = await res.json(); result[target] = data.mappings || []; }
-          else { result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false })); }
+          const res = await fetch(`${apiBase}/schema/${sourceBank}/${target}`, { headers: apiHeaders() });
+          if (res.ok) {
+            const data = await res.json();
+            const raw = data.mappings || [];
+            result[target] = raw.map(normalizeMapping);
+          } else {
+            result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false }));
+          }
         } catch { result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false })); }
       }
       setMappings(result); setLoading(false);

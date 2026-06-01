@@ -1,8 +1,11 @@
 from typing import List
+import json as _json
+import os as _os
 from celery import shared_task
 from .celery_app import app
 from src.production import PipelineOrchestrator
 from src.config import settings
+from .retention import DataRetentionPolicy
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,19 +16,16 @@ def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: 
     The primary background task that handles the entire ETL pipeline for a file.
     """
     logger.info(f"Starting background migration for file: {filepath}")
-    
+    orchestrator = None
+
     try:
-        # Initialize the orchestrator within the worker process
         orchestrator = PipelineOrchestrator()
-        
-        # Execute the migration
         result = orchestrator.migrate_file(
-            filepath=filepath, 
-            source_bank=source_bank, 
-            target_bank=target_bank, 
+            filepath=filepath,
+            source_bank=source_bank,
+            target_bank=target_bank,
             output_format=output_format
         )
-        
         return {
             "success": result.success,
             "total_records": result.total_records,
@@ -44,20 +44,42 @@ def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: 
             "failed": 0,
             "output_path": None
         }
+    finally:
+        if filepath and _os.path.exists(filepath):
+            try:
+                _os.remove(filepath)
+                logger.info(f"Cleaned up uploaded file: {filepath}")
+            except OSError as e:
+                logger.warning(f"Failed to clean up uploaded file {filepath}: {e}")
+        if orchestrator and hasattr(orchestrator, '_transformer'):
+            DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
 
 @shared_task(bind=True)
 def run_multi_migration_task(self, filepath_or_records, source_bank: str, target_banks: List[str], output_format: str = "json"):
     logger.info(f"Starting multi-target migration to {target_banks}")
+    orchestrator = None
+    filepath = None
+
     try:
         orchestrator = PipelineOrchestrator()
         if isinstance(filepath_or_records, str):
-            result = orchestrator.migrate_file_multi(filepath_or_records, source_bank, target_banks, output_format)
+            filepath = filepath_or_records
+            result = orchestrator.migrate_file_multi(filepath, source_bank, target_banks, output_format)
         else:
             result = orchestrator.migrate_data_multi(filepath_or_records, source_bank, target_banks, output_format)
-        return result.model_dump()
+        return json.loads(result.model_dump_json())
     except Exception as e:
         logger.error(f"Multi-target migration failed: {str(e)}")
         return {"success": False, "error": str(e)}
+    finally:
+        if filepath and _os.path.exists(filepath):
+            try:
+                _os.remove(filepath)
+                logger.info(f"Cleaned up uploaded file: {filepath}")
+            except OSError as e:
+                logger.warning(f"Failed to clean up uploaded file {filepath}: {e}")
+        if orchestrator and hasattr(orchestrator, '_transformer'):
+            DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
 
 @shared_task(bind=True)
 def run_data_migration_task(self, records: list, source_bank: str, target_bank: str, output_format: str = "json"):
@@ -65,11 +87,11 @@ def run_data_migration_task(self, records: list, source_bank: str, target_bank: 
     Task to process raw record lists asynchronously.
     """
     logger.info(f"Starting background record migration for {len(records)} records")
-    
+    orchestrator = None
+
     try:
         orchestrator = PipelineOrchestrator()
         result = orchestrator.migrate_data(records, source_bank, target_bank, output_format)
-        
         return {
             "success": result.success,
             "total_records": result.total_records,
@@ -88,3 +110,6 @@ def run_data_migration_task(self, records: list, source_bank: str, target_bank: 
             "failed": 0,
             "output_path": None
         }
+    finally:
+        if orchestrator and hasattr(orchestrator, '_transformer'):
+            DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)

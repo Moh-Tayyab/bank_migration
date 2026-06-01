@@ -7,12 +7,14 @@ const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
+  preload: true,
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
+  preload: false, // Only load when actually used for code elements
 });
 
 export const metadata: Metadata = {
@@ -35,7 +37,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `,
         }} />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased font-[family-name:var(--font-sans)]">
+      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased font-[family-name:var(--font-sans)]">
+        <a href="#main-content" className="skip-link">Skip to main content</a>
         {children}
       </body>
     </html>

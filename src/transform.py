@@ -172,4 +172,4 @@ class Transformer:
             self._txn.commit()
         else:
             self._txn.rollback()
-        return MigrationResult(success=failure_rate <= failure_threshold, total_records=total, processed=processed, failed=failed, records=self.get_committed_records() if failure_rate <= failure_threshold else [], audit_trail=self._audit.get_trail(), dlq=self._txn.get_failed_records() if failure_rate <= failure_threshold else None)
+        return MigrationResult(success=failure_rate <= failure_threshold, total_records=total, processed=processed, failed=failed, records=self.get_committed_records() if failure_rate <= failure_threshold else [], audit_trail=self._audit.get_trail(), dlq=self._txn.get_failed_records())

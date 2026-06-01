@@ -109,7 +109,7 @@ class SecurityMasker:
         domain_parts = domain.split(".")
         if len(domain_parts) > 0:
             domain_parts[0] = domain_parts[0][0] + "*" * (len(domain_parts[0]) - 1) if domain_parts[0] else ""
-        return f"{masked_local}@{'*'.join(domain_parts)}"
+        return f"{masked_local}@{'.'.join(domain_parts)}"
 
     def _mask_first_half(self, value: str) -> str:
         mid = len(value) // 2

@@ -81,3 +81,42 @@ class BankRegistry:
         if not schema:
             return {}
         return schema.masking_rules
+
+    def detect_target_bank(self, columns: List[str], exclude_banks: Optional[List[str]] = None) -> Optional[str]:
+        """
+        Detect the best matching target bank based on column overlap.
+
+        Args:
+            columns: List of column names from the uploaded file
+            exclude_banks: Banks to exclude from detection (e.g., source bank)
+
+        Returns:
+            The bank name with the highest field overlap, or None if no match found
+        """
+        exclude = set(exclude_banks or [])
+        column_set = set(col.lower() for col in columns)
+
+        best_match = None
+        best_score = 0
+        best_fields = {}
+
+        for bank in self._schemas:
+            if bank in exclude:
+                continue
+            schema = self.get_schema(bank, "latest")
+            if not schema:
+                continue
+
+            schema_fields = set(f.lower() for f in schema.fields.keys())
+            overlap = column_set & schema_fields
+            score = len(overlap)
+
+            if score > best_score:
+                best_score = score
+                best_match = bank
+                best_fields = schema_fields
+
+        # Only return a match if there's at least some overlap
+        if best_score > 0:
+            return best_match
+        return None

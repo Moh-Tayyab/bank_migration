@@ -21,16 +21,16 @@ export default function ConfirmationDialog({ open, title, message, confirmLabel 
   const btnBg = { danger: "bg-[var(--error)] hover:opacity-90 text-white", warning: "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-foreground)]", info: "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-foreground)]" };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative card-elevated w-full max-w-md p-5 animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3.5 mb-4">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg[variant]} ${iconColor[variant]}`}>
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg[variant]} ${iconColor[variant]}`} aria-hidden="true">
             <Icon name={iconMap[variant]} className="w-4.5 h-4.5" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-[var(--foreground)]">{title}</h3>
-            <p className="text-sm text-[var(--muted-foreground)] mt-1 leading-relaxed">{message}</p>
+            <h3 id="confirm-title" className="text-base font-semibold text-[var(--foreground)]">{title}</h3>
+            <p id="confirm-message" className="text-sm text-[var(--muted-foreground)] mt-1 leading-relaxed">{message}</p>
           </div>
         </div>
         <div className="flex gap-2.5 justify-end mt-5">
