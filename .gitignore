@@ -4,7 +4,7 @@ __pycache__/
 .env
 uploads/
 logs/
-output/
+/output/
 *.enc
 .next/
 node_modules/
