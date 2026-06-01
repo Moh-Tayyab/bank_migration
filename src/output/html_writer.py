@@ -1,4 +1,5 @@
 import html as _html
+
 from ..models import MigrationResult
 
 
@@ -18,7 +19,9 @@ class HTMLWriter:
             fieldnames = list(result.records[0].keys())
             records_html += "<tr>" + "".join(f"<th>{_html.escape(k)}</th>" for k in fieldnames) + "</tr>"
             for record in result.records:
-                records_html += "<tr>" + "".join(f"<td>{_html.escape(str(record.get(k, '')))}</td>" for k in fieldnames) + "</tr>"
+                records_html += (
+                    "<tr>" + "".join(f"<td>{_html.escape(str(record.get(k, '')))}</td>" for k in fieldnames) + "</tr>"
+                )
         html = f"""<!DOCTYPE html>
 <html>
 <head><title>Migration Report</title>
@@ -31,9 +34,10 @@ tr:nth-child(even) {{ background-color: #f2f2f2; }}
 </style></head>
 <body>
 <h1>Migration Report</h1>
-<p><strong>Success:</strong> {'Yes' if result.success else 'No'}</p>
-<p><strong>Total:</strong> {result.total_records} | <strong>Processed:</strong> {result.processed} | <strong>Failed:</strong> {result.failed}</p>
-{'<hr><h2>Migrated Records</h2><table>' + records_html + '</table>' if records_html else ''}
+<p><strong>Success:</strong> {"Yes" if result.success else "No"}</p>
+<p><strong>Total:</strong> {result.total_records} | <strong>Processed:</strong> {result.processed} | '
+    f'<strong>Failed:</strong> {result.failed}</p>
+{"<hr><h2>Migrated Records</h2><table>" + records_html + "</table>" if records_html else ""}
 <hr>
 <h2>Audit Trail</h2>
 <table>

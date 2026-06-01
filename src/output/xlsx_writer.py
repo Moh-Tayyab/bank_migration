@@ -1,5 +1,6 @@
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Font, PatternFill
+
 from ..models import MigrationResult
 
 
@@ -12,13 +13,15 @@ class XLSXWriter:
         ws.merge_cells("A1:E1")
         ws["A1"].font = Font(bold=True, size=14)
         ws.append(["Success", "Total Records", "Processed", "Failed", "Error"])
-        ws.append([
-            "Yes" if result.success else "No",
-            result.total_records,
-            result.processed,
-            result.failed,
-            result.error or "",
-        ])
+        ws.append(
+            [
+                "Yes" if result.success else "No",
+                result.total_records,
+                result.processed,
+                result.failed,
+                result.error or "",
+            ]
+        )
         if result.records:
             ws.append([])
             title_row = ws.max_row
@@ -44,11 +47,13 @@ class XLSXWriter:
             cell.fill = header_fill
             cell.font = Font(bold=True, color="FFFFFF")
         for entry in result.audit_trail:
-            ws.append([
-                entry.event.value,
-                entry.record_id,
-                entry.bank_pair,
-                entry.details,
-                str(entry.timestamp),
-            ])
+            ws.append(
+                [
+                    entry.event.value,
+                    entry.record_id,
+                    entry.bank_pair,
+                    entry.details,
+                    str(entry.timestamp),
+                ]
+            )
         wb.save(output_path)

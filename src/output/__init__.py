@@ -1,9 +1,9 @@
-from .json_writer import JSONWriter
 from .csv_writer import CSVWriter
 from .docx_writer import DOCXWriter
 from .html_writer import HTMLWriter
-from .xlsx_writer import XLSXWriter
+from .json_writer import JSONWriter
 from .sqlldr_writer import SQLLoaderWriter
+from .xlsx_writer import XLSXWriter
 
 
 def get_writer(format_name: str):

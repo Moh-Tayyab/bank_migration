@@ -1,5 +1,5 @@
 import csv
-from typing import List, Dict, Any
+
 from ..models import MigrationResult
 
 
@@ -13,20 +13,24 @@ class CSVWriter:
             else:
                 rows = []
                 for entry in result.audit_trail:
-                    rows.append({
-                        "event": entry.event.value,
-                        "record_id": entry.record_id,
-                        "bank_pair": entry.bank_pair,
-                        "details": entry.details,
-                        "timestamp": str(entry.timestamp),
-                    })
+                    rows.append(
+                        {
+                            "event": entry.event.value,
+                            "record_id": entry.record_id,
+                            "bank_pair": entry.bank_pair,
+                            "details": entry.details,
+                            "timestamp": str(entry.timestamp),
+                        }
+                    )
                 if not rows:
-                    rows.append({
-                        "success": str(result.success),
-                        "total": str(result.total_records),
-                        "processed": str(result.processed),
-                        "failed": str(result.failed),
-                    })
+                    rows.append(
+                        {
+                            "success": str(result.success),
+                            "total": str(result.total_records),
+                            "processed": str(result.processed),
+                            "failed": str(result.failed),
+                        }
+                    )
                 writer = csv.DictWriter(f, fieldnames=rows[0].keys())
                 writer.writeheader()
                 writer.writerows(rows)

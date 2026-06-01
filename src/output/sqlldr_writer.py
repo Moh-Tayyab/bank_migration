@@ -1,7 +1,7 @@
-import csv
-import re
 import os
-from typing import List, Dict, Any, Optional
+import re
+from typing import Any, Optional
+
 from ..models import MigrationResult
 
 
@@ -137,9 +137,9 @@ class SQLLoaderWriter:
             "",
             "# ==================== DATABASE CONNECTION ====================",
             "# Update this with your Oracle database connection details",
-            "DB_USER=\"your_username\"",
-            "DB_PASS=\"your_password\"",
-            "DB_CONNECT=\"your_database\"",
+            'DB_USER="your_username"',
+            'DB_PASS="your_password"',
+            'DB_CONNECT="your_database"',
             "",
             "# ==================== RUN SQL*LOADER ====================",
             "",
@@ -173,15 +173,17 @@ class SQLLoaderWriter:
             row_values = [self._escape_csv_field(value) for value in record.values()]
             script_lines.append(",".join(row_values))
 
-        script_lines.extend([
-            "EOF",
-            "",
-            "# ==================== STATUS ====================",
-            "echo 'SQL*Loader completed. Check migration.log for details.'",
-            "if [ -f migration.bad ]; then",
-            "    echo 'Rejected records: ' $(wc -l < migration.bad)",
-            "fi",
-        ])
+        script_lines.extend(
+            [
+                "EOF",
+                "",
+                "# ==================== STATUS ====================",
+                "echo 'SQL*Loader completed. Check migration.log for details.'",
+                "if [ -f migration.bad ]; then",
+                "    echo 'Rejected records: ' $(wc -l < migration.bad)",
+                "fi",
+            ]
+        )
 
         # Write the script
         with open(output_path, "w") as f:

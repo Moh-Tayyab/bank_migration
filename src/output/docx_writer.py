@@ -1,13 +1,12 @@
 from docx import Document
-from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+
 from ..models import MigrationResult
 
 
 class DOCXWriter:
     def write(self, result: MigrationResult, output_path: str):
         doc = Document()
-        title = doc.add_heading("Migration Report", level=0)
+        doc.add_heading("Migration Report", level=0)
         doc.add_paragraph(f"Success: {'Yes' if result.success else 'No'}")
         doc.add_paragraph(f"Total Records: {result.total_records}")
         doc.add_paragraph(f"Processed: {result.processed}")
