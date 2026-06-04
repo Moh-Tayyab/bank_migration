@@ -2,7 +2,10 @@
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
 uploads/
+uploads/preview_store/
 logs/
 /output/
 *.enc
@@ -11,3 +14,5 @@ node_modules/
 *.egg-info/
 .pytest_cache/
 canonical_store/
+
+testsprite_tests/tmp/config.json

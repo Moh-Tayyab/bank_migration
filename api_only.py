@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 import mimetypes
@@ -32,8 +33,13 @@ limiter = Limiter(key_func=get_remote_address)
 async def verify_api_key(api_key: str = Security(_api_key_header)):
     expected = os.getenv("API_KEY", "")
     if not expected:
-        return None  # auth disabled if no key configured
-    if api_key != expected:
+        env = os.getenv("ENVIRONMENT", "development")
+        if env == "production":
+            logger.error("API_KEY not set in production — refusing unauthenticated requests")
+            raise HTTPException(status_code=500, detail="Authentication not configured")
+        logger.warning("API_KEY not set — authentication disabled (development only)")
+        return None
+    if not api_key or not hmac.compare_digest(api_key, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
     return api_key
 
@@ -72,6 +78,9 @@ app = FastAPI(
     description="Production-Grade Interbank ETL Platform",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if os.getenv("ENVIRONMENT") == "production" else "/docs",
+    redoc_url=None if os.getenv("ENVIRONMENT") == "production" else "/redoc",
+    openapi_url=None if os.getenv("ENVIRONMENT") == "production" else "/openapi.json",
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -81,13 +90,50 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["X-API-Key", "Content-Type", "Accept"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 
 orchestrator = PipelineOrchestrator()
 _schema_ai = None
 _anomaly_ai = None
+
+# Directory to store previewed files for reuse
+_preview_store_dir = settings.upload_dir / "preview_store"
+_preview_store_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _cleanup_old_previews():
+    """Remove preview files older than preview_store_ttl_hours."""
+    import time
+
+    try:
+        now = time.time()
+        ttl_seconds = settings.preview_store_ttl_hours * 3600
+        removed = 0
+        for filepath in _preview_store_dir.iterdir():
+            if filepath.is_file():
+                if now - filepath.stat().st_mtime > ttl_seconds:
+                    try:
+                        filepath.unlink()
+                        removed += 1
+                    except OSError:
+                        pass
+        if removed > 0:
+            logger.info("Cleaned up %d old preview files", removed)
+    except Exception as e:
+        logger.warning("Preview cleanup failed: %s", e)
 
 
 def get_schema_ai():
@@ -108,41 +154,59 @@ def get_anomaly_ai():
     return _anomaly_ai
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
-@app.post("/migrate/upload")
+@app.post("/api/migrate/upload")
 @limiter.limit("10/minute")
 async def migrate_upload(
     request: Request,
     _auth=Depends(verify_api_key),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),  # Optional when file_id is provided
     source_bank: str = Form(...),
     target_banks: str = Form("[]"),
     output_format: Optional[str] = Form("json"),
+    file_id: Optional[str] = Form(None),  # Reuse previously uploaded file
 ):
     import json as _json
 
     banks = _json.loads(target_banks) if isinstance(target_banks, str) else target_banks
-    os.makedirs(settings.upload_dir, exist_ok=True)
-    safe_filename = os.path.basename(file.filename or "upload")
-    file_id = str(uuid.uuid4())
-    filepath = os.path.join(settings.upload_dir, f"{file_id}_{safe_filename}")
-    max_bytes = settings.max_file_size_mb * 1024 * 1024
-    try:
-        with open(filepath, "wb") as f:
-            total = 0
-            while chunk := await file.read(1024 * 1024):
-                total += len(chunk)
-                if total > max_bytes:
-                    raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb}MB limit")
-                f.write(chunk)
-    except BaseException:
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        raise
+
+    # Determine file source: uploaded file OR stored file_id
+    filepath = None
+    is_temporary = False
+
+    if file_id:
+        # Reuse stored file from preview
+        matching_files = list(_preview_store_dir.glob(f"{file_id}_*"))
+        if not matching_files:
+            raise HTTPException(status_code=404, detail="Preview file not found or expired. Please re-upload the file.")
+        filepath = str(matching_files[0])
+        logger.info(f"Reusing stored preview file: {filepath}")
+    elif file:
+        # New file upload
+        os.makedirs(settings.upload_dir, exist_ok=True)
+        safe_filename = os.path.basename(file.filename or "upload")
+        new_file_id = str(uuid.uuid4())
+        filepath = os.path.join(settings.upload_dir, f"{new_file_id}_{safe_filename}")
+        is_temporary = True
+        max_bytes = settings.max_file_size_mb * 1024 * 1024
+        try:
+            with open(filepath, "wb") as f:
+                total = 0
+                while chunk := await file.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb}MB limit")
+                    f.write(chunk)
+        except BaseException:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            raise
+    else:
+        raise HTTPException(status_code=400, detail="Either file or file_id must be provided")
 
     celery_dispatched = False
     try:
@@ -158,7 +222,7 @@ async def migrate_upload(
                         "status": "queued",
                         "message": (
                             f"Migration to {len(banks)} target bank(s) started in "
-                            f"background. Use /status/{task_id} to check progress."
+                            f"background. Use /api/status/{task_id} to check progress."
                         ),
                         "file_id": file_id,
                     }
@@ -178,7 +242,7 @@ async def migrate_upload(
                         "status": "queued",
                         "message": (
                             f"Migration to {len(banks)} target bank(s) started in "
-                            f"background. Use /status/{task_id} to check progress."
+                            f"background. Use /api/status/{task_id} to check progress."
                         ),
                         "file_id": file_id,
                     }
@@ -192,14 +256,15 @@ async def migrate_upload(
         logger.exception("Migration failed")
         raise HTTPException(status_code=500, detail="Migration failed. Check server logs for details.")
     finally:
-        if not celery_dispatched and os.path.exists(filepath):
+        # Only clean up if it was a temporary upload (not from preview_store)
+        if is_temporary and not celery_dispatched and os.path.exists(filepath):
             try:
                 os.remove(filepath)
             except OSError:
                 pass
 
 
-@app.post("/migrate/data")
+@app.post("/api/migrate/data")
 @limiter.limit("10/minute")
 async def migrate_data(
     request: Request,
@@ -244,7 +309,7 @@ async def migrate_data(
         return json.loads(result.model_dump_json())
 
 
-@app.get("/status/{task_id}")
+@app.get("/api/status/{task_id}")
 @limiter.limit("30/minute")
 async def get_task_status(request: Request, task_id: str, _auth=Depends(verify_api_key)):
     try:
@@ -262,20 +327,76 @@ async def get_task_status(request: Request, task_id: str, _auth=Depends(verify_a
         return {"task_id": task_id, "status": "unavailable", "result": None}
 
 
-@app.get("/banks")
+@app.get("/api/banks")
 @limiter.limit("30/minute")
 async def list_banks(request: Request, _auth=Depends(verify_api_key)):
     return {"banks": orchestrator.get_banks()}
 
 
-@app.get("/schema/{source_bank}/{target_bank}")
+@app.get("/api/schema/{source_bank}/{target_bank}")
 @limiter.limit("30/minute")
 async def get_schema_mapping(request: Request, source_bank: str, target_bank: str, _auth=Depends(verify_api_key)):
     mappings = orchestrator.get_schema_mapping(source_bank, target_bank)
     return {"source_bank": source_bank, "target_bank": target_bank, "mappings": mappings}
 
 
-@app.get("/download/{filename}")
+@app.post("/api/schema/auto-map")
+@limiter.limit("10/minute")
+async def auto_map_columns(
+    request: Request,
+    _auth=Depends(verify_api_key),
+    file: UploadFile = File(...),
+    target_bank: str = Form("private_individuals"),
+):
+    from .schema_mapper import auto_generate_mappings
+
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    safe_filename = os.path.basename(file.filename or "upload")
+    file_id = str(uuid.uuid4())
+    filepath = os.path.join(settings.upload_dir, f"{file_id}_{safe_filename}")
+
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    try:
+        with open(filepath, "wb") as f:
+            total = 0
+            while chunk := await file.read(1024 * 1024):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb}MB limit")
+                f.write(chunk)
+    except BaseException:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise
+
+    try:
+        detected, records = orchestrator.preview_file(filepath, row_limit=5)
+        columns = list(records[0].keys()) if records else []
+
+        mappings = auto_generate_mappings(columns, target_bank)
+        mapping_list = [{"source": m.source_field, "target": m.target_field} for m in mappings]
+
+        matched_count = len(mapping_list)
+        total_source = len(columns)
+
+        return {
+            "filename": file.filename,
+            "format": detected,
+            "source_columns": columns,
+            "target_bank": target_bank,
+            "mappings": mapping_list,
+            "matched": matched_count,
+            "total_source_columns": total_source,
+            "preview_rows": records[:3],
+            "file_id": file_id,
+        }
+    except Exception:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise
+
+
+@app.get("/api/download/{filename}")
 @limiter.limit("20/minute")
 async def download_file(request: Request, filename: str, _auth=Depends(verify_api_key)):
     safe_name = os.path.basename(filename)
@@ -290,7 +411,7 @@ async def download_file(request: Request, filename: str, _auth=Depends(verify_ap
     )
 
 
-@app.post("/preview")
+@app.post("/api/preview")
 @limiter.limit("10/minute")
 async def preview_file(
     request: Request,
@@ -300,10 +421,12 @@ async def preview_file(
     source_bank: Optional[str] = Form(None),
 ):
     row_limit = min(row_limit, 100)
-    os.makedirs(settings.upload_dir, exist_ok=True)
+    _cleanup_old_previews()  # Clean up old files before storing new one
+
     safe_filename = os.path.basename(file.filename or "upload")
     file_id = str(uuid.uuid4())
-    filepath = os.path.join(settings.upload_dir, f"{file_id}_{safe_filename}")
+    # Store in preview_store directory for reuse during migration
+    filepath = _preview_store_dir / f"{file_id}_{safe_filename}"
     max_bytes = settings.max_file_size_mb * 1024 * 1024
     try:
         with open(filepath, "wb") as f:
@@ -317,15 +440,16 @@ async def preview_file(
         if os.path.exists(filepath):
             os.remove(filepath)
         raise
+
     try:
-        detected, records = orchestrator.preview_file(filepath, row_limit)
+        detected, records = orchestrator.preview_file(str(filepath), row_limit)
         columns = list(records[0].keys()) if records else []
 
         # Auto-detect target bank based on column matching
         detected_target = None
         if columns:
             exclude = [source_bank] if source_bank else []
-            detected_target = orchestrator._registry.detect_target_bank(columns, exclude_banks=exclude)
+            detected_target = orchestrator.detect_target_bank(columns, exclude_banks=exclude)
 
         return {
             "filename": file.filename,
@@ -335,13 +459,17 @@ async def preview_file(
             "rows": records,
             "row_count": len(records),
             "detected_target_bank": detected_target,
+            "file_id": file_id,  # Return file_id for reuse in migration
+            "stored_filename": f"{file_id}_{safe_filename}",
         }
-    finally:
+    except Exception:
+        # Clean up file if preview fails
         if os.path.exists(filepath):
             os.remove(filepath)
+        raise
 
 
-@app.post("/sqlldr/generate")
+@app.post("/api/sqlldr/generate")
 @limiter.limit("10/minute")
 async def generate_sqlldr_script(
     request: Request,
@@ -579,14 +707,14 @@ async def generate_sqlldr_script(
                 pass
 
 
-@app.get("/audit/{migration_id}")
+@app.get("/api/audit/{migration_id}")
 @limiter.limit("30/minute")
 async def get_audit(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     trail = orchestrator.get_audit_trail(migration_id)
     return {"entries": [json.loads(e.model_dump_json()) for e in trail]}
 
 
-@app.get("/audit/{migration_id}/export")
+@app.get("/api/audit/{migration_id}/export")
 @limiter.limit("20/minute")
 async def export_audit_csv(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     import csv
@@ -608,7 +736,7 @@ async def export_audit_csv(request: Request, migration_id: str, _auth=Depends(ve
     )
 
 
-@app.post("/admin/cleanup")
+@app.post("/api/admin/cleanup")
 @limiter.limit("2/minute")
 async def admin_cleanup(
     request: Request,
@@ -642,7 +770,7 @@ async def admin_cleanup(
 # --- AI Orchestration Endpoints ---
 
 
-@app.post("/ai/suggest-mapping")
+@app.post("/api/ai/suggest-mapping")
 @limiter.limit("5/minute")
 async def ai_suggest_mapping(
     request: Request,
@@ -662,7 +790,7 @@ async def ai_suggest_mapping(
         raise HTTPException(status_code=500, detail="Failed to generate schema suggestion.")
 
 
-@app.post("/ai/apply-mapping")
+@app.post("/api/ai/apply-mapping")
 @limiter.limit("5/minute")
 async def ai_apply_mapping(request: Request, suggestion: dict, _auth=Depends(verify_api_key)):
     """
@@ -676,7 +804,7 @@ async def ai_apply_mapping(request: Request, suggestion: dict, _auth=Depends(ver
         raise HTTPException(status_code=400, detail="Failed to apply schema mapping.")
 
 
-@app.get("/ai/analyze-anomaly/{migration_id}")
+@app.get("/api/ai/analyze-anomaly/{migration_id}")
 @limiter.limit("5/minute")
 async def ai_analyze_anomaly(request: Request, migration_id: str, _auth=Depends(verify_api_key)):
     """

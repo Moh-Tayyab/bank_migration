@@ -1,0 +1,117 @@
+{
+  "validation_date": "2026-06-03",
+  "total_records": 50,
+  "total_fields": 10,
+  "fields": {
+    "category": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 6,
+      "sample_values": [
+        "NONCONVICTION TERROR",
+        "POLITICAL INDIVIDUAL",
+        "POLITICAL INDIVIDUAL"
+      ]
+    },
+    "editor": {
+      "null_count": 50,
+      "null_percentage": 100.0,
+      "unique_values": 0,
+      "sample_values": []
+    },
+    "entered": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 17,
+      "sample_values": [
+        "2000-11-10",
+        "2000-10-16",
+        "2000-10-16"
+      ]
+    },
+    "sub-category": {
+      "null_count": 17,
+      "null_percentage": 34.0,
+      "unique_values": 1,
+      "sample_values": [
+        "PEP",
+        "PEP",
+        "PEP"
+      ]
+    },
+    "uid": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 50,
+      "sample_values": [
+        1,
+        7,
+        12
+      ]
+    },
+    "updated": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 16,
+      "sample_values": [
+        "2022-11-15",
+        "2022-08-30",
+        "2023-04-06"
+      ]
+    },
+    "entity_type": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 1,
+      "sample_values": [
+        "person",
+        "person",
+        "person"
+      ]
+    },
+    "e-i": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 3,
+      "sample_values": [
+        "E",
+        "M",
+        "M"
+      ]
+    },
+    "first_name": {
+      "null_count": 17,
+      "null_percentage": 34.0,
+      "unique_values": 33,
+      "sample_values": [
+        "Sadi Tuma Abbas",
+        "Humam abd-al-Khaliq",
+        "Mahmud Dhiyab"
+      ]
+    },
+    "last_name": {
+      "null_count": 0,
+      "null_percentage": 0.0,
+      "unique_values": 50,
+      "sample_values": [
+        "REVOLUTIONARY ORGANIZATION 17 NOVEMBER",
+        "AL-JABBURI",
+        "ABD-AL-GHAFUR"
+      ]
+    }
+  },
+  "critical_issues": [
+    "first_name has 17 NULL values (34.0%)",
+    "sub-category has 17 NULL values (34.0%)",
+    "editor field is 100% NULL - will be dropped"
+  ],
+  "category_distribution": {
+    "POLITICAL INDIVIDUAL": 23,
+    "NONCONVICTION TERROR": 18,
+    "INDIVIDUAL": 5,
+    "CRIME - WAR": 2,
+    "CRIME - TERROR": 1,
+    "CRIME - FINANCIAL": 1
+  },
+  "ready_for_migration": true
+}

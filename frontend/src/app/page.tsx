@@ -14,7 +14,7 @@ import MultiBankResults from "./components/MultiBankResults";
 import AuditPanel from "./components/AuditPanel";
 import PollingCard from "./components/PollingCard";
 import DownloadCommand from "./components/DownloadCommand";
-import { BanksBarSkeleton, CardSkeleton } from "./components/Skeleton";
+import { BanksBarSkeleton } from "./components/Skeleton";
 import { fmt } from "./components/types";
 import { useMigration } from "./components/hooks/useMigration";
 import { useSqlLoader } from "./components/hooks/useSqlLoader";
@@ -46,10 +46,10 @@ function MigrationPageInner() {
         <div className="orb orb-2" aria-hidden="true" />
 
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-[var(--card)]/90 backdrop-blur-md border-b border-[var(--border)]" role="banner">
+        <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-[var(--border)]" role="banner" style={{ background: 'color-mix(in srgb, var(--card) 85%, transparent)' }}>
           <div className="max-w-[1440px] mx-auto h-14 flex items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center text-white font-bold text-xs tracking-tight">
+              <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center text-white font-bold text-xs tracking-tight shadow-md">
                 UW
               </div>
               <div className="hidden sm:block">
@@ -137,6 +137,8 @@ function MigrationPageInner() {
                     setSourceBank={m.setSourceBank}
                     setOutputFormat={m.setOutputFormat}
                     handleMigrate={m.handleMigrate}
+                    toggleTargetBank={m.toggleTargetBank}
+                    handleMigrate={m.handleMigrate}
                   />
                 </div>
 
@@ -194,13 +196,13 @@ function MigrationPageInner() {
                   {/* Empty State */}
                   {!m.result && !m.errMsg && !m.pollingTask && (
                     <div className="card-elevated p-10 flex flex-col items-center justify-center text-center min-h-[380px] animate-fade-in">
-                      <div className="w-14 h-14 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center mb-5 animate-success-check">
-                        <Icon name="layers" className="w-7 h-7 text-[var(--primary)]" />
+                      <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-5 animate-success-check shadow-lg" style={{ boxShadow: '0 8px 24px rgba(79, 70, 229, 0.25)' }}>
+                        <Icon name="layers" className="w-8 h-8 text-white" />
                       </div>
-                      <h2 className="text-base font-semibold text-[var(--foreground)]">Ready to Migrate</h2>
+                      <h2 className="text-lg font-bold text-[var(--foreground)]">Ready to Migrate</h2>
                       <p className="text-sm text-[var(--muted-foreground)] max-w-sm mt-2 leading-relaxed">
                         Upload a data file and preview it to auto-detect the target bank, then click{" "}
-                        <span className="font-semibold text-[var(--foreground)]">Migrate Data</span> to start the pipeline.
+                        <span className="font-semibold gradient-text">Migrate Data</span> to start the pipeline.
                       </p>
                       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                         {[

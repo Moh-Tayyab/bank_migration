@@ -3,9 +3,8 @@ import Icon from "./Icon";
 import { toast } from "./Toast";
 
 type DownloadCommandProps =
-  | { filename: string; apiBase: string; type?: "curl" }
-  | { scriptName: string; type: "bash" }
-  | { filename: string; apiBase: string; type: "sh-curl" };
+  | { filename: string; apiBase: string; type: "sh-curl" }
+  | { scriptName: string; type: "bash" };
 
 export default function DownloadCommand(props: DownloadCommandProps) {
   const [copied, setCopied] = useState(false);
@@ -16,13 +15,9 @@ export default function DownloadCommand(props: DownloadCommandProps) {
   if (props.type === "bash") {
     cmd = `bash ${props.scriptName}`;
     label = "Copy bash cmd";
-  } else if (props.type === "sh-curl") {
-    cmd = `curl -o ${props.filename} ${props.apiBase}/download/${props.filename}`;
-    label = "Copy .sh cmd";
   } else {
-    // default: curl download
-    cmd = `curl -O ${props.apiBase}/download/${props.filename}`;
-    label = "Copy cmd";
+    cmd = `curl -s http://localhost:8000/api/download/${props.filename} -o ${props.filename} && powershell -NoProfile -Command "Import-Csv ${props.filename} | Format-Table -AutoSize"`;
+    label = "Copy .sh cmd";
   }
 
   const copy = async () => {

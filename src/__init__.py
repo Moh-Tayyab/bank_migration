@@ -1,3 +1,3 @@
-from .transform import Transformer
+from .pipeline import Pipeline, PipelineStage
 
-__all__ = ["Transformer"]
+__all__ = ["Pipeline", "PipelineStage"]

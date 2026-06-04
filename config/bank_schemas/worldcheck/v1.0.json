@@ -1,0 +1,145 @@
+{
+  "schema_name": "WorldCheck",
+  "schema_version": "1.0",
+  "schema_type": "source",
+  "description": "WorldCheck sanctions/watchlist database schema from Refinitiv. Contains AML/KYC screening data with categories, PEP classifications, and risk indicators.",
+  "record_count": 50,
+  "last_updated": "2026-06-03",
+  "fields": {
+    "category": {
+      "type": "str",
+      "required": true,
+      "description": "Primary category indicating risk level (e.g., CRIME - TERROR, POLITICAL INDIVIDUAL, INDIVIDUAL)",
+      "allowed_values": [
+        "CRIME - TERROR",
+        "NONCONVICTION TERROR",
+        "CRIME - WAR",
+        "CRIME - FINANCIAL",
+        "POLITICAL INDIVIDUAL",
+        "INDIVIDUAL"
+      ],
+      "aml_relevance": "high"
+    },
+    "editor": {
+      "type": "str",
+      "required": false,
+      "description": "Editor who last modified the record (100% NULL in current data)",
+      "aml_relevance": "low"
+    },
+    "entered": {
+      "type": "str",
+      "required": true,
+      "description": "Date record was entered into WorldCheck (format: YYYY-MM-DD)",
+      "validation": "date",
+      "aml_relevance": "medium"
+    },
+    "sub-category": {
+      "type": "str",
+      "required": false,
+      "description": "Sub-category for additional classification (e.g., PEP)",
+      "allowed_values": ["PEP"],
+      "null_rate": "34%",
+      "aml_relevance": "high"
+    },
+    "uid": {
+      "type": "int",
+      "required": true,
+      "description": "Unique identifier for the record",
+      "validation": "unique",
+      "aml_relevance": "high"
+    },
+    "updated": {
+      "type": "str",
+      "required": true,
+      "description": "Date record was last updated (format: YYYY-MM-DD)",
+      "validation": "date",
+      "aml_relevance": "medium"
+    },
+    "entity_type": {
+      "type": "str",
+      "required": true,
+      "description": "Type of entity (always 'person' in current data)",
+      "allowed_values": ["person", "entity"],
+      "aml_relevance": "medium"
+    },
+    "e-i": {
+      "type": "str",
+      "required": true,
+      "description": "Entity/Individual indicator (E=Entity, I=Individual with M/F subcode, M=Male, F=Female)",
+      "allowed_values": ["E", "M", "F"],
+      "aml_relevance": "medium"
+    },
+    "first_name": {
+      "type": "str",
+      "required": false,
+      "description": "First name or given name (NULL for entities, 34% NULL rate)",
+      "null_rate": "34%",
+      "aml_relevance": "high"
+    },
+    "last_name": {
+      "type": "str",
+      "required": true,
+      "description": "Last name, family name, or full entity name (contains entity name when first_name is NULL)",
+      "aml_relevance": "high"
+    }
+  },
+  "data_quality": {
+    "completeness": "66%",
+    "issues": [
+      "editor field is 100% NULL",
+      "first_name field is 34% NULL",
+      "sub-category field is 34% NULL",
+      "Entity names stored in last_name field when first_name is NULL"
+    ],
+    "recommendations": [
+      "Implement conditional name parsing for entity detection",
+      "Create manual review workflow for NULL first_name records",
+      "Validate category values against allowed list"
+    ]
+  },
+  "risk_categories": {
+    "CRIME - TERROR": {
+      "risk_score": 100,
+      "risk_level": "CRITICAL",
+      "screening_lists": ["OFAC", "UN", "EU"]
+    },
+    "NONCONVICTION TERROR": {
+      "risk_score": 95,
+      "risk_level": "CRITICAL",
+      "screening_lists": ["OFAC", "UN", "EU"]
+    },
+    "CRIME - WAR": {
+      "risk_score": 90,
+      "risk_level": "HIGH",
+      "screening_lists": ["OFAC", "UN"]
+    },
+    "CRIME - FINANCIAL": {
+      "risk_score": 85,
+      "risk_level": "HIGH",
+      "screening_lists": ["OFAC", "FATF"]
+    },
+    "POLITICAL INDIVIDUAL": {
+      "risk_score": 70,
+      "risk_level": "MEDIUM",
+      "pep_boost": 10,
+      "screening_lists": ["PEP Database"]
+    },
+    "INDIVIDUAL": {
+      "risk_score": 50,
+      "risk_level": "MEDIUM",
+      "screening_lists": ["General Screening"]
+    }
+  },
+  "transformation_requirements": {
+    "name_parsing": "conditional",
+    "risk_scoring": "required",
+    "pep_classification": "required",
+    "gender_mapping": {
+      "E": "U",
+      "M": "M",
+      "F": "F"
+    },
+    "record_type_derivation": "required",
+    "date_validation": "ISO 8601"
+  }
+}

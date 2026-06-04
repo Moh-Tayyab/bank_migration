@@ -1,0 +1,211 @@
+{
+  "mapping_name": "WorldCheck to Private Individuals",
+  "mapping_version": "1.0",
+  "source_schema": "worldcheck/v1.0",
+  "target_schema": "private_individuals/v1.0",
+  "created_date": "2026-06-03",
+  "description": "Mapping configuration for WorldCheck to Private Individuals migration with AML/KYC compliance transformations",
+  "field_mappings": [
+    {
+      "source_field": "uid",
+      "target_field": "ListRecordId",
+      "transformation": "direct_copy",
+      "confidence": 1.0,
+      "required": true
+    },
+    {
+      "source_field": "entered",
+      "target_field": "AddedDate",
+      "transformation": "date_format_iso8601",
+      "confidence": 0.95,
+      "required": true
+    },
+    {
+      "source_field": "updated",
+      "target_field": "LastUpdatedDate",
+      "transformation": "date_format_iso8601",
+      "confidence": 0.95,
+      "required": true
+    },
+    {
+      "source_fields": ["first_name", "last_name"],
+      "target_field": "FullName",
+      "transformation": "conditional_concatenation",
+      "logic": "IF first_name IS NULL THEN last_name ELSE first_name + ' ' + last_name",
+      "confidence": 0.80,
+      "required": true
+    },
+    {
+      "source_fields": ["first_name", "last_name"],
+      "target_field": "GivenNames",
+      "transformation": "conditional_copy",
+      "logic": "IF first_name IS NOT NULL THEN first_name ELSE NULL",
+      "confidence": 0.85,
+      "required": false
+    },
+    {
+      "source_field": "last_name",
+      "target_field": "FamilyName",
+      "transformation": "direct_copy",
+      "confidence": 0.85,
+      "required": true
+    },
+    {
+      "source_fields": ["first_name", "last_name"],
+      "target_field": "PrimaryName",
+      "transformation": "conditional_concatenation",
+      "logic": "IF first_name IS NULL THEN last_name ELSE first_name + ' ' + last_name",
+      "confidence": 0.80,
+      "required": false
+    },
+    {
+      "source_fields": ["first_name", "last_name"],
+      "target_field": "NameType",
+      "transformation": "entity_detection",
+      "logic": "IF first_name IS NULL THEN 'Entity Name' ELSE 'Primary Name'",
+      "confidence": 0.70,
+      "required": false
+    },
+    {
+      "source_field": "e-i",
+      "target_field": "Gender",
+      "transformation": "value_mapping",
+      "mapping": {
+        "M": "M",
+        "F": "F",
+        "E": "U"
+      },
+      "default": "U",
+      "confidence": 0.70,
+      "required": false
+    },
+    {
+      "source_field": "sub-category",
+      "target_field": "PEPclassification",
+      "transformation": "conditional_copy",
+      "logic": "IF sub-category = 'PEP' THEN 'PEP' ELSE NULL",
+      "confidence": 0.75,
+      "required": false
+    },
+    {
+      "source_field": "category",
+      "target_field": "RiskScore",
+      "transformation": "risk_matrix_lookup",
+      "matrix": {
+        "CRIME - TERROR": 100,
+        "NONCONVICTION TERROR": 95,
+        "CRIME - WAR": 90,
+        "CRIME - FINANCIAL": 85,
+        "POLITICAL INDIVIDUAL": 70,
+        "INDIVIDUAL": 50
+      },
+      "pep_boost": {
+        "condition": "sub-category = 'PEP'",
+        "boost": 10,
+        "max_score": 100
+      },
+      "confidence": 0.70,
+      "required": true
+    },
+    {
+      "source_fields": ["category", "sub-category"],
+      "target_field": "ListRecordType",
+      "transformation": "business_rule_derivation",
+      "rules": [
+        "IF sub-category = 'PEP' THEN 'PEP'",
+        "IF category contains 'CRIME' OR 'TERROR' THEN 'SAN'",
+        "IF category = 'POLITICAL INDIVIDUAL' THEN 'SIP'",
+        "DEFAULT 'SIP'"
+      ],
+      "confidence": 0.70,
+      "required": true
+    },
+    {
+      "source_field": "category",
+      "target_field": "CustomString1",
+      "transformation": "direct_copy",
+      "confidence": 0.70,
+      "required": false,
+      "notes": "Store for reference"
+    }
+  ],
+  "default_values": {
+    "ListSubKey": "Private",
+    "ListRecordOrigin": "WORLDCHECK",
+    "NameType": "Primary Name",
+    "InactiveFlag": false,
+    "DeceasedFlag": false
+  },
+  "calculated_fields": [
+    {
+      "target_field": "DataConfidenceScore",
+      "calculation": "completeness_based",
+      "base_score": 50,
+      "adjustments": [
+        "+35 if first_name AND last_name present",
+        "-20 if first_name NULL",
+        "+10 if sub-category present",
+        "-5 if sub-category NULL",
+        "+5 per valid date field"
+      ],
+      "range": [0, 100]
+    },
+    {
+      "target_field": "IsPEP",
+      "calculation": "derived",
+      "logic": "sub-category = 'PEP' OR category = 'POLITICAL INDIVIDUAL'"
+    },
+    {
+      "target_field": "IsEntity",
+      "calculation": "derived",
+      "logic": "first_name IS NULL"
+    }
+  ],
+  "validation_rules": {
+    "pre_migration": [
+      "All source records must have unique uid",
+      "All dates must be in valid format",
+      "last_name cannot be NULL",
+      "category must be in allowed values"
+    ],
+    "post_migration": [
+      "All target records must have ListRecordId",
+      "All target records must have FullName",
+      "All target records must have ListRecordType",
+      "LastUpdatedDate must be >= AddedDate",
+      "No records with NULL mandatory fields"
+    ]
+  },
+  "manual_review_rules": {
+    "flag_for_review": [
+      "DataConfidenceScore < 70",
+      "first_name IS NULL",
+      "sub-category IS NULL",
+      "RiskScore uses default value",
+      "Category not in risk matrix"
+    ],
+    "review_fields": [
+      "ListRecordType",
+      "RiskScore",
+      "PEPclassification",
+      "NameType"
+    ]
+  },
+  "transformation_audit": {
+    "log_all_transformations": true,
+    "log_fields": [
+      "timestamp",
+      "source_record_id",
+      "transformation_name",
+      "input_values",
+      "output_values",
+      "confidence",
+      "issues"
+    ]
+  },
+  "rollback_config": {
+    "enabled": true,
+    "max_failure_rate": 0.05,
+    "rollback_on_validation_error": true
+  }
+}

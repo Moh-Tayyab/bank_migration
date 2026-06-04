@@ -10,8 +10,5 @@ export const HISTORY_KEY = "migration_history";
 export const fmt = (name: string) => name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export function apiHeaders(): Record<string, string> {
-  const key = process.env.NEXT_PUBLIC_API_KEY || "";
-  const headers: Record<string, string> = {};
-  if (key) headers["X-API-Key"] = key;
-  return headers;
+  return {};
 }

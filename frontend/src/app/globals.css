@@ -2,50 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design Tokens: Fintech Analytics Dashboard ────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Premium Fintech Dashboard — Design System
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Light Mode Tokens ─────────────────────────────────────────── */
 
 :root {
-  --background: #f8fafc;
-  --background-secondary: #f1f5f9;
-  --foreground: #0f172a;
+  /* Surface & Layout */
+  --background: #f0f4f8;
+  --background-secondary: #e8edf4;
+  --foreground: #0c1222;
+  
+  /* Cards */
   --card: #ffffff;
-  --card-foreground: #0f172a;
-  --card-hover: #f8fafc;
-  --primary: #1e40af;
-  --primary-hover: #1e3a8a;
+  --card-foreground: #0c1222;
+  --card-hover: #f7f9fc;
+  
+  /* Primary — Refined Indigo */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
   --primary-foreground: #ffffff;
-  --primary-light: #dbeafe;
-  --primary-glow: rgba(30, 64, 175, 0.12);
-  --secondary: #3b82f6;
+  --primary-light: #eef2ff;
+  --primary-glow: rgba(79, 70, 229, 0.15);
+  
+  /* Secondary */
+  --secondary: #6366f1;
   --secondary-foreground: #ffffff;
-  --accent: #d97706;
+  
+  /* Accent */
+  --accent: #f59e0b;
   --accent-light: #fef3c7;
-  --muted: #f1f5f9;
+  
+  /* Muted */
+  --muted: #e8edf4;
   --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --border-hover: #cbd5e1;
-  --ring: #1e40af;
-  --success: #059669;
+  
+  /* Border */
+  --border: #dfe5ef;
+  --border-hover: #c7cfdd;
+  --ring: #4f46e5;
+  
+  /* Semantic */
+  --success: #10b981;
   --success-light: #ecfdf5;
-  --warning: #d97706;
+  --warning: #f59e0b;
   --warning-light: #fffbeb;
-  --error: #dc2626;
+  --error: #ef4444;
   --error-light: #fef2f2;
-  --info: #0284c7;
+  --info: #0ea5e9;
   --info-light: #e0f2fe;
-  --processing: #7c3aed;
+  --processing: #8b5cf6;
   --processing-light: #ede9fe;
-  --gradient-start: #1e40af;
-  --gradient-mid: #3b82f6;
-  --gradient-end: #60a5fa;
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.1), 0 4px 8px rgba(15, 23, 42, 0.05);
-  --shadow-glow: 0 0 0 3px rgba(30, 64, 175, 0.12);
-  --radius: 10px;
-  --radius-lg: 14px;
+  
+  /* Gradients */
+  --gradient-start: #4f46e5;
+  --gradient-mid: #6366f1;
+  --gradient-end: #818cf8;
+  
+  /* Shadows — Soft, layered, premium feel */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 60px rgba(15, 23, 42, 0.1), 0 8px 20px rgba(15, 23, 42, 0.06);
+  --shadow-glow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-card-hover: 0 8px 30px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+  
+  /* Radius */
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 }
+
+/* ─── Dark Mode Tokens ──────────────────────────────────────────── */
 
 .dark {
   --background: #0a0f1e;
@@ -54,12 +85,12 @@
   --card: #131b2e;
   --card-foreground: #e2e8f0;
   --card-hover: #1a2438;
-  --primary: #60a5fa;
-  --primary-hover: #3b82f6;
+  --primary: #818cf8;
+  --primary-hover: #6366f1;
   --primary-foreground: #0f172a;
-  --primary-light: #172554;
-  --primary-glow: rgba(96, 165, 250, 0.14);
-  --secondary: #93c5fd;
+  --primary-light: #1e1b4b;
+  --primary-glow: rgba(129, 140, 248, 0.18);
+  --secondary: #a5b4fc;
   --secondary-foreground: #0f172a;
   --accent: #fbbf24;
   --accent-light: #422006;
@@ -67,7 +98,7 @@
   --muted-foreground: #94a3b8;
   --border: #1e293b;
   --border-hover: #334155;
-  --ring: #60a5fa;
+  --ring: #818cf8;
   --success: #34d399;
   --success-light: #064e3b;
   --warning: #fbbf24;
@@ -78,17 +109,22 @@
   --info-light: #0c4a6e;
   --processing: #a78bfa;
   --processing-light: #2e1065;
-  --gradient-start: #3b82f6;
-  --gradient-mid: #60a5fa;
-  --gradient-end: #93c5fd;
+  --gradient-start: #6366f1;
+  --gradient-mid: #818cf8;
+  --gradient-end: #a5b4fc;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45), 0 4px 8px rgba(0, 0, 0, 0.25);
-  --shadow-glow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* ─── Base ───────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════════════════════ */
 
 body {
   background: var(--background);
@@ -146,17 +182,38 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
-/* ─── Cards ───────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Cards — Premium Glassmorphism
+   ═══════════════════════════════════════════════════════════════════ */
 
 .card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 0 0 1px var(--primary-glow);
 }
 
 .card:hover {
   border-color: var(--border-hover);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.card:hover::after {
+  opacity: 1;
 }
 
 .card-elevated {
@@ -164,12 +221,31 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-elevated::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary-glow), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .card-elevated:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+.card-elevated:hover::before {
+  opacity: 1;
 }
 
 .stat-card {
@@ -188,14 +264,14 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--primary);
+  height: 3px;
+  background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-hover);
 }
@@ -204,7 +280,9 @@ body {
   opacity: 1;
 }
 
-/* ─── Buttons ──────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Buttons — With Gradient Glow
+   ═══════════════════════════════════════════════════════════════════ */
 
 .btn-primary {
   display: inline-flex;
@@ -215,19 +293,32 @@ body {
   border-radius: var(--radius);
   font-weight: 600;
   font-size: 0.875rem;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: var(--primary-foreground);
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .btn-primary:hover {
-  background: var(--primary-hover);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35), var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
 }
 
 .btn-primary:active {
@@ -235,10 +326,14 @@ body {
 }
 
 .btn-primary:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+.btn-primary:disabled::before {
+  display: none;
 }
 
 .btn-secondary {
@@ -250,23 +345,28 @@ body {
   border-radius: var(--radius);
   font-weight: 500;
   font-size: 0.8125rem;
-  background: var(--muted);
+  background: var(--card);
   color: var(--foreground);
   border: 1px solid var(--border);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-xs);
 }
 
 .btn-secondary:hover {
-  background: var(--border);
+  background: var(--muted);
   border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .btn-secondary:active {
   transform: scale(0.98);
 }
 
-/* ─── Select / Input ───────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Select / Input
+   ═══════════════════════════════════════════════════════════════════ */
 
 .select-field {
   width: 100%;
@@ -274,15 +374,16 @@ body {
   padding: 0 2.5rem 0 0.875rem;
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  background: var(--background);
+  background: var(--card);
   color: var(--foreground);
   font-size: 0.875rem;
   font-weight: 500;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   outline: none;
+  box-shadow: var(--shadow-xs);
 }
 
 .select-field:focus {
@@ -290,7 +391,9 @@ body {
   box-shadow: var(--shadow-glow);
 }
 
-/* ─── Dropzone ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Dropzone — Premium Upload Area
+   ═══════════════════════════════════════════════════════════════════ */
 
 .dropzone {
   position: relative;
@@ -299,19 +402,21 @@ body {
   padding: 2.5rem 2rem;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   background: var(--background);
 }
 
 .dropzone:hover {
   border-color: var(--primary);
   background: var(--primary-light);
+  box-shadow: 0 0 0 4px var(--primary-glow);
+  transform: translateY(-1px);
 }
 
 .dropzone.active {
   border-color: var(--primary);
   background: var(--primary-light);
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 0 0 4px var(--primary-glow), var(--shadow-md);
 }
 
 .dropzone.has-file {
@@ -320,7 +425,9 @@ body {
   background: var(--success-light);
 }
 
-/* ─── Badges ─────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Badges
+   ═══════════════════════════════════════════════════════════════════ */
 
 .badge {
   display: inline-flex;
@@ -343,7 +450,9 @@ body {
 .badge-transform { background: var(--info-light); color: var(--info); }
 .badge-masked { background: var(--warning-light); color: var(--warning); }
 
-/* ─── Format Buttons ──────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Format Buttons
+   ═══════════════════════════════════════════════════════════════════ */
 
 .format-btn {
   display: inline-flex;
@@ -357,22 +466,25 @@ body {
   font-weight: 700;
   letter-spacing: 0.05em;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: var(--card);
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   user-select: none;
   font-family: inherit;
   line-height: 1;
+  box-shadow: var(--shadow-xs);
 }
 
 .format-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
   background: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .format-btn:active {
@@ -381,16 +493,18 @@ body {
 
 .format-btn.active {
   border-color: var(--primary);
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: var(--primary-foreground);
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
 }
 
 .format-btn.active:hover {
-  background: var(--primary-hover);
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
 }
 
-/* ─── Progress Bar ─────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Progress Bar
+   ═══════════════════════════════════════════════════════════════════ */
 
 .progress-track {
   width: 100%;
@@ -403,12 +517,12 @@ body {
 .progress-fill {
   height: 100%;
   border-radius: 100px;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .progress-fill-success {
-  background: var(--success);
+  background: linear-gradient(90deg, var(--success), #6ee7b7);
 }
 
 .progress-fill-indeterminate {
@@ -417,7 +531,9 @@ body {
   animation: progress-shimmer 2s linear infinite;
 }
 
-/* ─── Audit Table ──────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Audit Table
+   ═══════════════════════════════════════════════════════════════════ */
 
 .audit-table {
   width: 100%;
@@ -449,7 +565,7 @@ body {
 .audit-table td:last-child { padding-right: 1.25rem; }
 
 .audit-table tbody tr {
-  transition: background 0.1s ease;
+  transition: background 0.15s ease;
 }
 
 .audit-table tbody tr:hover {
@@ -460,7 +576,9 @@ body {
   border-bottom: none;
 }
 
-/* ─── Skeleton Shimmer ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Skeleton Shimmer
+   ═══════════════════════════════════════════════════════════════════ */
 
 .skeleton {
   background: linear-gradient(
@@ -479,7 +597,9 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* ─── Animations ───────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Animations
+   ═══════════════════════════════════════════════════════════════════ */
 
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }
@@ -511,6 +631,11 @@ body {
   50% { opacity: 0.3; transform: scale(0.75); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
 @keyframes progress-fill {
   from { width: 0%; }
 }
@@ -529,6 +654,11 @@ body {
   0% { transform: scale(0); opacity: 0; }
   50% { transform: scale(1.15); }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gentle-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--primary-glow); }
+  50% { box-shadow: 0 0 0 8px transparent; }
 }
 
 .animate-slide-up { animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -550,7 +680,9 @@ body {
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 
-/* ─── Gradient Utilities ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Gradient Utilities
+   ═══════════════════════════════════════════════════════════════════ */
 
 .gradient-text {
   background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
@@ -563,7 +695,9 @@ body {
   background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
 }
 
-/* ─── Background Orbs ──────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Background Orbs — Animated Ambient Light
+   ═══════════════════════════════════════════════════════════════════ */
 
 .orb {
   position: fixed;
@@ -571,25 +705,37 @@ body {
   filter: blur(100px);
   pointer-events: none;
   z-index: -1;
+  animation: float 12s ease-in-out infinite;
 }
 
 .orb-1 {
-  width: 500px;
-  height: 500px;
+  width: 600px;
+  height: 600px;
   top: -200px;
   right: -100px;
-  background: radial-gradient(circle, rgba(30, 64, 175, 0.06), transparent 70%);
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.08), transparent 70%);
+}
+
+.dark .orb-1 {
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.15), transparent 70%);
 }
 
 .orb-2 {
-  width: 400px;
-  height: 400px;
+  width: 500px;
+  height: 500px;
   bottom: -150px;
   left: -100px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.04), transparent 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.06), transparent 70%);
+  animation-delay: -6s;
 }
 
-/* ─── Mobile Bottom Bar ────────────────────────────────────────────── */
+.dark .orb-2 {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 70%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Mobile Bottom Bar
+   ═══════════════════════════════════════════════════════════════════ */
 
 .mobile-action-bar {
   position: fixed;
@@ -615,7 +761,9 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Reduced Motion ───────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Reduced Motion
+   ═══════════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -15,8 +15,8 @@ function saveHistory(history: HistoryEntry[]) {
 export function useMigration() {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [sourceBank, setSourceBank] = useState("source_bank");
-  const [targetBanks, setTargetBanks] = useState<string[]>([]);
+  const [sourceBank, setSourceBank] = useState("auto");
+  const [targetBanks, setTargetBanks] = useState<string[]>(["private_individuals"]);
   const [detectedTarget, setDetectedTarget] = useState<string | null>(null);
   const [outputFormat, setOutputFormat] = useState("json");
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,7 @@ export function useMigration() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [pollingTask, setPollingTask] = useState<string | null>(null);
   const [pollingBanks, setPollingBanks] = useState<number>(0);
+  const [previewedFileId, setPreviewedFileId] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,15 +114,17 @@ export function useMigration() {
       const data = await res.json();
       if (data.rows) {
         setPreview(data);
-        // Auto-detect target bank
+        // Store file_id for reuse during migration
+        if (data.file_id) {
+          setPreviewedFileId(data.file_id);
+        }
+        // Store detected target but don't override user's manual selection
         if (data.detected_target_bank) {
           setDetectedTarget(data.detected_target_bank);
-          setTargetBanks([data.detected_target_bank]);
-          toast("success", `Preview loaded: ${data.row_count} rows, ${(data.total_columns || data.columns?.length)} columns. Target detected: ${fmt(data.detected_target_bank)}`);
+          toast("success", `Preview loaded: ${data.row_count} rows, ${(data.total_columns || data.columns?.length)} columns.`);
         } else {
           setDetectedTarget(null);
-          setTargetBanks([]);
-          toast("warning", `Preview loaded, but no matching target bank schema found`);
+          toast("success", `Preview loaded: ${data.row_count} rows, ${(data.total_columns || data.columns?.length)} columns.`);
         }
       }
     } catch {
@@ -213,7 +216,15 @@ export function useMigration() {
     setErrMsg("");
     setPreview(null);
     const form = new FormData();
-    form.append("file", file);
+
+    // If we have a previewed file_id, send it instead of re-uploading
+    if (previewedFileId) {
+      form.append("file_id", previewedFileId);
+      toast("info", "Using stored file from preview...");
+    } else {
+      form.append("file", file);
+    }
+
     form.append("source_bank", sourceBank);
     form.append("target_banks", JSON.stringify(targetBanks));
     form.append("output_format", outputFormat);
@@ -221,7 +232,13 @@ export function useMigration() {
       const res = await fetch(`${API_BASE}/migrate/upload`, { method: "POST", body: form, headers: apiHeaders() });
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
-        toast("error", errData?.detail || `Upload failed: HTTP ${res.status}`);
+        // If file_id expired, clear it and notify user
+        if (errData?.detail?.includes("not found") || errData?.detail?.includes("expired")) {
+          setPreviewedFileId(null);
+          toast("error", "Preview file expired. Please preview the file again.");
+        } else {
+          toast("error", errData?.detail || `Upload failed: HTTP ${res.status}`);
+        }
         return;
       }
       const data = await res.json();
@@ -263,7 +280,7 @@ export function useMigration() {
     } finally {
       setLoading(false);
     }
-  }, [file, sourceBank, targetBanks, outputFormat, history, pollTaskStatus]);
+  }, [file, previewedFileId, sourceBank, targetBanks, outputFormat, history, pollTaskStatus]);
 
   const handleMigrate = useCallback(() => {
     if (!file || targetBanks.length === 0) return;
@@ -323,7 +340,7 @@ export function useMigration() {
     result, multiResults, auditTrail, preview, banks, banksLoading,
     loading, previewLoading, pollingTask, uploadProgress, pollingBanks,
     errMsg, dark, showAudit, showTargetDropdown, showConfirm, history,
-    pipelineStage, sourceColumns, pct,
+    pipelineStage, sourceColumns, pct, previewedFileId,
     inputRef,
     setSourceBank, setOutputFormat, setDragOver, setPreview,
     setShowTargetDropdown, setShowConfirm, setShowAudit,

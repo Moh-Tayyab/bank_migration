@@ -6,13 +6,16 @@ import type { MigrationHook } from "./hooks/useMigration";
 type Props = Pick<MigrationHook,
   "sourceBank" | "targetBanks" | "detectedTarget" | "outputFormat" | "banks" |
   "file" | "loading" | "pollingTask" | "pollingBanks" |
-  "setSourceBank" | "setOutputFormat" | "handleMigrate"
+  "setSourceBank" | "setOutputFormat" | "handleMigrate" | "toggleTargetBank"
 >;
+
+const SOURCE_BANKS = ["auto", "source_bank"];
+const TARGET_BANKS = ["private_individuals", "persistent_bank", "target_bank", "test_bank"];
 
 export default function ConfigCard({
   sourceBank, targetBanks, detectedTarget, outputFormat, banks, file, loading,
   pollingTask, pollingBanks,
-  setSourceBank, setOutputFormat, handleMigrate: onMigrate,
+  setSourceBank, setOutputFormat, handleMigrate: onMigrate, toggleTargetBank,
 }: Props) {
   const canMigrate = !!file && targetBanks.length > 0 && !loading && !pollingTask;
 
@@ -31,35 +34,45 @@ export default function ConfigCard({
           </label>
           <div className="relative">
             <select value={sourceBank} onChange={(e) => setSourceBank(e.target.value)} className="select-field" id="source-bank-select">
-              {banks.length > 0 ? banks.map((b) => <option key={b} value={b}>{fmt(b)}</option>) : <option value="source_bank">Source Bank</option>}
+              {SOURCE_BANKS.map((bank) => (
+                <option key={bank} value={bank}>{bank === "auto" ? "Auto (Detect from file)" : fmt(bank)}</option>
+              ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
               <Icon name="chevron" className="w-4 h-4 text-[var(--muted-foreground)]" />
             </div>
           </div>
+          {sourceBank === "auto" && (
+            <p className="text-xs text-[var(--muted-foreground)] mt-1.5">
+              Source columns will be auto-detected from your file and mapped to the target schema.
+            </p>
+          )}
         </div>
 
         <div>
           <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wider">
             Target Bank
           </label>
-          {detectedTarget ? (
-            <div className="p-3 rounded-lg bg-[var(--success-light)] border border-[var(--success)]/30">
-              <div className="flex items-center gap-2">
-                <Icon name="check-circle" className="w-4 h-4 text-[var(--success)] shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs text-[var(--muted-foreground)]">Auto-detected from file columns</p>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{fmt(detectedTarget)}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3 rounded-lg bg-[var(--muted)] border border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Icon name="info-circle" className="w-4 h-4 text-[var(--muted-foreground)] shrink-0" />
-                <p className="text-xs text-[var(--muted-foreground)]">Upload and preview a file to auto-detect target bank</p>
-              </div>
-            </div>
+          <div className="grid grid-cols-3 gap-2">
+            {TARGET_BANKS.map((bank) => (
+              <button
+                key={bank}
+                onClick={() => toggleTargetBank(bank)}
+                type="button"
+                className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+                  targetBanks.includes(bank)
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                    : "bg-[var(--muted)] border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-light)]"
+                }`}
+              >
+                {fmt(bank)}
+              </button>
+            ))}
+          </div>
+          {targetBanks.length > 0 && (
+            <p className="text-xs text-[var(--muted-foreground)] mt-2">
+              Selected: {targetBanks.map(fmt).join(", ")}
+            </p>
           )}
         </div>
 

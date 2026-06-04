@@ -110,15 +110,32 @@ class FormatDetector:
     def _extract_xml(filepath: str) -> List[Dict[str, Any]]:
         import defusedxml.ElementTree as safe_ET
 
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+        if not content:
+            raise ValueError(f"XML file is empty: {filepath}")
+
         tree = safe_ET.parse(filepath)
         root = tree.getroot()
         records = []
-        for child in root:
-            record = {}
-            for sub in child:
-                record[sub.tag] = sub.text or ""
-            if record:
-                records.append(record)
+
+        # Check if this is a World-Check style XML with nested structure
+        first_record = next((child for child in root), None)
+        if first_record is not None and any(len(sub) > 0 for sub in first_record):
+            # Use nested flattening for structures like World-Check
+            for child in root:
+                record = FormatDetector._flatten_xml_element(child, "")
+                if record:
+                    records.append(record)
+        else:
+            # Use simple extraction for flat XML structures
+            for child in root:
+                record = {}
+                for sub in child:
+                    record[sub.tag] = sub.text or ""
+                if record:
+                    records.append(record)
+
         if not records:
             record = {}
             for sub in root:
@@ -126,6 +143,69 @@ class FormatDetector:
             if record:
                 records.append(record)
         return records
+
+    @staticmethod
+    def _flatten_xml_element(elem: Any, prefix: str, max_depth: int = 5) -> Dict[str, Any]:
+        """Recursively flatten XML elements, creating prefixed field names for nested structures.
+
+        Args:
+            elem: XML element to flatten
+            prefix: Current field name prefix
+            max_depth: Maximum depth to recurse (prevents infinite loops)
+
+        Returns:
+            Flattened dictionary with composite field names
+        """
+        if max_depth <= 0:
+            return {}
+
+        record = {}
+        # Add element's own attributes
+        for attr, value in elem.attrib.items():
+            # Clean attribute names (remove namespace URIs)
+            clean_attr = attr.split("}")[-1] if "}" in attr else attr
+            attr_key = f"{prefix}_{clean_attr}" if prefix else clean_attr
+            record[attr_key] = value
+
+        # Process child elements
+        child_counts = {}  # Track counts for multiple children with same tag
+        for child in elem:
+            child_counts[child.tag] = child_counts.get(child.tag, 0) + 1
+
+        child_index = {}  # Track current index for each tag
+        for child in elem:
+            # Build field name with prefix
+            new_prefix = f"{prefix}_{child.tag}" if prefix else child.tag
+
+            # If multiple children with same tag, add index (starting from 1)
+            if child_counts[child.tag] > 1:
+                child_index[child.tag] = child_index.get(child.tag, 0) + 1
+                new_prefix = f"{new_prefix}_{child_index[child.tag]}"
+
+            # Check if child has children (nested structure)
+            if len(child) > 0:
+                # Recurse into nested elements
+                nested = FormatDetector._flatten_xml_element(child, new_prefix, max_depth - 1)
+                record.update(nested)
+            else:
+                # Leaf node - add child's attributes first
+                for attr, value in child.attrib.items():
+                    clean_attr = attr.split("}")[-1] if "}" in attr else attr
+                    if clean_attr != "nil":  # Skip xsi:nil
+                        attr_key = f"{new_prefix}_{clean_attr}"
+                        record[attr_key] = value
+                # Then add text content if present
+                if child.text and child.text.strip():
+                    record[new_prefix] = child.text.strip()
+                # If no text and no attributes, still create the field
+                elif not child.attrib:
+                    record[new_prefix] = ""
+
+        # If no content and no attributes, use element tag itself
+        if not record and prefix:
+            record[prefix] = ""
+
+        return record
 
     @staticmethod
     def _extract_txt(filepath: str) -> List[Dict[str, Any]]:

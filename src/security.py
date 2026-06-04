@@ -1,13 +1,9 @@
 import re
 from typing import Any, Dict, Optional
 
-from .audit_logger import AuditLogger
-from .models import AuditEvent
-
 
 class SecurityMasker:
-    def __init__(self, audit_logger: Optional[AuditLogger] = None):
-        self._audit = audit_logger
+    def __init__(self):
         self._masking_rules: Dict[str, str] = {
             "account_number": "show_last_4",
             "email": "mask_email",
@@ -28,12 +24,6 @@ class SecurityMasker:
             rule = self._detect_rule(field, value)
             if rule:
                 masked[field] = self._apply_rule(value, rule)
-                if self._audit:
-                    self._audit.log(
-                        AuditEvent.SECURITY_MASK,
-                        record_id=record_id,
-                        details=f"Masked field '{field}' with rule '{rule}'",
-                    )
         return masked
 
     def _detect_rule(self, field: str, value: str) -> Optional[str]:

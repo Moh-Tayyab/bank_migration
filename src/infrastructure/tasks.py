@@ -43,8 +43,10 @@ def run_full_migration_task(self, filepath: str, source_bank: str, target_bank: 
                 logger.info(f"Cleaned up uploaded file: {filepath}")
             except OSError as e:
                 logger.warning(f"Failed to clean up uploaded file {filepath}: {e}")
-        if orchestrator and hasattr(orchestrator, "_transformer"):
-            DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
+        if orchestrator:
+            canonical = orchestrator.get_canonical_store()
+            if canonical:
+                DataRetentionPolicy.clear_in_memory_store(canonical)
 
 
 @shared_task(bind=True)
@@ -73,8 +75,10 @@ def run_multi_migration_task(
                 logger.info(f"Cleaned up uploaded file: {filepath}")
             except OSError as e:
                 logger.warning(f"Failed to clean up uploaded file {filepath}: {e}")
-        if orchestrator and hasattr(orchestrator, "_transformer"):
-            DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
+        if orchestrator:
+            canonical = orchestrator.get_canonical_store()
+            if canonical:
+                DataRetentionPolicy.clear_in_memory_store(canonical)
 
 
 @shared_task(bind=True)
@@ -100,5 +104,7 @@ def run_data_migration_task(self, records: list, source_bank: str, target_bank: 
         logger.error(f"Data migration failed: {str(e)}")
         return {"success": False, "error": str(e), "total_records": 0, "processed": 0, "failed": 0, "output_path": None}
     finally:
-        if orchestrator and hasattr(orchestrator, "_transformer"):
-            DataRetentionPolicy.clear_in_memory_store(orchestrator._transformer._canonical)
+        if orchestrator:
+            canonical = orchestrator.get_canonical_store()
+            if canonical:
+                DataRetentionPolicy.clear_in_memory_store(canonical)

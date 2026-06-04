@@ -1,0 +1,744 @@
+{
+  "schema_name": "Private Individuals",
+  "schema_version": "1.0",
+  "schema_type": "target",
+  "description": "Internal bank screening database for AML/KYC compliance. Contains 93 fields for comprehensive customer risk profiling and PEP/Sanctions screening.",
+  "record_count": 1,
+  "last_updated": "2026-06-03",
+  "fields": {
+    "ListSubKey": {
+      "type": "str",
+      "required": false,
+      "default": "Private",
+      "description": "Sub-key for list categorization"
+    },
+    "ListRecordType": {
+      "type": "str",
+      "required": true,
+      "description": "Record type determining screening workflow",
+      "allowed_values": ["SAN", "PEP", "SIP", "SOE"],
+      "derivation": "from category and sub-category",
+      "aml_relevance": "critical"
+    },
+    "ListRecordOrigin": {
+      "type": "str",
+      "required": false,
+      "default": "WORLDCHECK",
+      "description": "Source system identifier"
+    },
+    "ListRecordId": {
+      "type": "int",
+      "required": true,
+      "description": "Unique identifier for audit trail",
+      "source_field": "uid",
+      "validation": "unique",
+      "aml_relevance": "critical"
+    },
+    "PassportNumber": {
+      "type": "str",
+      "required": false,
+      "description": "Passport number (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "high"
+    },
+    "PassportIssCountry": {
+      "type": "str",
+      "required": false,
+      "description": "Passport issuing country (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "NationalId": {
+      "type": "str",
+      "required": false,
+      "description": "National ID (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "high"
+    },
+    "Identifiers": {
+      "type": "str",
+      "required": false,
+      "description": "Additional identifiers (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "Title": {
+      "type": "str",
+      "required": false,
+      "description": "Title/honorific (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "FullName": {
+      "type": "str",
+      "required": true,
+      "description": "Complete name for search and display",
+      "source_fields": ["first_name", "last_name"],
+      "transformation": "concatenate",
+      "validation": "not_empty",
+      "aml_relevance": "critical"
+    },
+    "GivenNames": {
+      "type": "str",
+      "required": false,
+      "description": "First/given names",
+      "source_field": "first_name",
+      "null_handling": "allowed_for_entities",
+      "aml_relevance": "high"
+    },
+    "FamilyName": {
+      "type": "str",
+      "required": true,
+      "description": "Last/family name or entity name",
+      "source_field": "last_name",
+      "validation": "not_empty",
+      "aml_relevance": "critical"
+    },
+    "NameType": {
+      "type": "str",
+      "required": false,
+      "description": "Type of name (Primary Name, Entity Name, Alias)",
+      "default": "Primary Name",
+      "transformation": "derived_from_first_name_null",
+      "aml_relevance": "medium"
+    },
+    "NameQuality": {
+      "type": "str",
+      "required": false,
+      "description": "Quality indicator for name data",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "PrimaryName": {
+      "type": "str",
+      "required": false,
+      "description": "Primary name for indexing",
+      "source_field": "FullName",
+      "transformation": "copy",
+      "aml_relevance": "high"
+    },
+    "OriginalScriptName": {
+      "type": "str",
+      "required": false,
+      "description": "Name in original script (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "Gender": {
+      "type": "str",
+      "required": false,
+      "description": "Gender classification",
+      "source_field": "e-i",
+      "allowed_values": ["M", "F", "U", "E"],
+      "transformation": "map",
+      "mapping": {"E": "U", "M": "M", "F": "F"},
+      "default": "U",
+      "aml_relevance": "medium"
+    },
+    "Occupation": {
+      "type": "str",
+      "required": false,
+      "description": "Occupation (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "DateOfBirth": {
+      "type": "str",
+      "required": false,
+      "description": "Date of birth (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "high"
+    },
+    "YearOfBirth": {
+      "type": "int",
+      "required": false,
+      "description": "Year of birth (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "DeceasedFlag": {
+      "type": "bool",
+      "required": false,
+      "description": "Deceased status indicator",
+      "default": false,
+      "aml_relevance": "medium"
+    },
+    "DeceasedDate": {
+      "type": "str",
+      "required": false,
+      "description": "Date of death (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "Address1": {
+      "type": "str",
+      "required": false,
+      "description": "Address line 1 (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "high"
+    },
+    "Address2": {
+      "type": "str",
+      "required": false,
+      "description": "Address line 2 (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "Address3": {
+      "type": "str",
+      "required": false,
+      "description": "Address line 3 (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "Address4": {
+      "type": "str",
+      "required": false,
+      "description": "Address line 4 (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "City": {
+      "type": "str",
+      "required": false,
+      "description": "City (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "State": {
+      "type": "str",
+      "required": false,
+      "description": "State/province (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "PostalCode": {
+      "type": "str",
+      "required": false,
+      "description": "Postal code (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "AddressCountryCode": {
+      "type": "str",
+      "required": false,
+      "description": "Address country code (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "ResidencyCountryCode": {
+      "type": "str",
+      "required": false,
+      "description": "Country of residency (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "CountryOfBirthCode": {
+      "type": "str",
+      "required": false,
+      "description": "Country of birth (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "NationalityCountryCodes": {
+      "type": "str",
+      "required": false,
+      "description": "Nationality country codes (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "medium"
+    },
+    "ProfileHyperlink": {
+      "type": "str",
+      "required": false,
+      "description": "URL to full profile (not available in WorldCheck source)",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "RiskScore": {
+      "type": "int",
+      "required": true,
+      "description": "Risk score (0-100) for prioritization",
+      "source_field": "category",
+      "transformation": "risk_matrix",
+      "validation": "range_0_100",
+      "aml_relevance": "critical"
+    },
+    "RiskScorePEP": {
+      "type": "int",
+      "required": false,
+      "description": "PEP-specific risk score",
+      "default": null,
+      "aml_relevance": "high"
+    },
+    "AddedDate": {
+      "type": "str",
+      "required": true,
+      "description": "Date record was added to system",
+      "source_field": "entered",
+      "transformation": "date_format_iso8601",
+      "validation": "date_not_future",
+      "aml_relevance": "critical"
+    },
+    "LastUpdatedDate": {
+      "type": "str",
+      "required": true,
+      "description": "Date record was last updated",
+      "source_field": "updated",
+      "transformation": "date_format_iso8601",
+      "validation": "date_not_future, >= AddedDate",
+      "aml_relevance": "critical"
+    },
+    "DataConfidenceScore": {
+      "type": "int",
+      "required": false,
+      "description": "Data quality confidence score (0-100)",
+      "transformation": "completeness_based",
+      "default": 85,
+      "validation": "range_0_100",
+      "aml_relevance": "medium"
+    },
+    "DataConfidenceComment": {
+      "type": "str",
+      "required": false,
+      "description": "Comments on data confidence",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "InactiveFlag": {
+      "type": "bool",
+      "required": false,
+      "description": "Inactive record indicator",
+      "default": false,
+      "aml_relevance": "medium"
+    },
+    "InactiveSinceDate": {
+      "type": "str",
+      "required": false,
+      "description": "Date record became inactive",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "PEPclassification": {
+      "type": "str",
+      "required": false,
+      "description": "PEP classification details",
+      "source_field": "sub-category",
+      "transformation": "derive_pep_status",
+      "allowed_values": ["PEP", "PEP - Level 1", "PEP - Level 2", "PEP - Level 3", "PEP - Level 4", "PEP - Review Required"],
+      "default": null,
+      "aml_relevance": "critical"
+    },
+    "CustomString1": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 1 (stores source category for reference)",
+      "source_field": "category",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString2": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 2",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString3": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 3",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString4": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 4",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString5": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 5",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString6": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 6",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString7": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 7",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString8": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 8",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString9": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 9",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString10": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 10",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString11": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 11",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString12": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 12",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString13": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 13",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString14": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 14",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString15": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 15",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString16": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 16",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString17": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 17",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString18": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 18",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString19": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 19",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString20": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 20",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString21": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 21",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString22": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 22",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString23": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 23",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString24": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 24",
+      "default": null,
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString25": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 25",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString26": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 26",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString27": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 27",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString28": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 28",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString29": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 29",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString30": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 30",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString31": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 31",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString32": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 32",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString33": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 33",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString34": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 34",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString35": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 35",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString36": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 36",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString37": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 37",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString38": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 38",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString39": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 39",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomString40": {
+      "type": "str",
+      "required": false,
+      "description": "Custom string field 40",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomDate1": {
+      "type": "str",
+      "required": false,
+      "description": "Custom date field 1",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomDate2": {
+      "type": "str",
+      "required": false,
+      "description": "Custom date field 2",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomDate3": {
+      "type": "str",
+      "required": false,
+      "description": "Custom date field 3",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomDate4": {
+      "type": "str",
+      "required": false,
+      "description": "Custom date field 4",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomDate5": {
+      "type": "str",
+      "required": false,
+      "description": "Custom date field 5",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomNumber1": {
+      "type": "int",
+      "required": false,
+      "description": "Custom number field 1",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomNumber2": {
+      "type": "int",
+      "required": false,
+      "description": "Custom number field 2",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomNumber3": {
+      "type": "int",
+      "required": false,
+      "description": "Custom number field 3",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomNumber4": {
+      "type": "int",
+      "required": false,
+      "description": "Custom number field 4",
+      "default": null,
+      "aml_relevance": "low"
+    },
+    "CustomNumber5": {
+      "type": "int",
+      "required": false,
+      "description": "Custom number field 5",
+      "default": null,
+      "aml_relevance": "low"
+    }
+  },
+  "mandatory_fields": [
+    "ListRecordId",
+    "ListRecordType",
+    "FullName",
+    "FamilyName",
+    "AddedDate",
+    "LastUpdatedDate"
+  ],
+  "transformation_rules": {
+    "name_concatenation": {
+      "source_fields": ["first_name", "last_name"],
+      "target_field": "FullName",
+      "logic": "IF first_name IS NULL THEN last_name ELSE first_name + ' ' + last_name"
+    },
+    "entity_detection": {
+      "condition": "first_name IS NULL",
+      "actions": [
+        "Set NameType = 'Entity Name'",
+        "Set IsEntity = true",
+        "Set DataConfidenceScore = 60"
+      ]
+    },
+    "risk_scoring": {
+      "matrix": {
+        "CRIME - TERROR": 100,
+        "NONCONVICTION TERROR": 95,
+        "CRIME - WAR": 90,
+        "CRIME - FINANCIAL": 85,
+        "POLITICAL INDIVIDUAL": 70,
+        "INDIVIDUAL": 50
+      },
+      "pep_boost": 10
+    },
+    "record_type_derivation": {
+      "rules": [
+        "IF sub-category = 'PEP' THEN ListRecordType = 'PEP'",
+        "IF category contains 'CRIME' OR 'TERROR' THEN ListRecordType = 'SAN'",
+        "IF category = 'POLITICAL INDIVIDUAL' THEN ListRecordType = 'SIP'",
+        "DEFAULT ListRecordType = 'SIP'"
+      ]
+    },
+    "date_validation": {
+      "format": "ISO 8601",
+      "validations": [
+        "date must not be in future",
+        "LastUpdatedDate must be >= AddedDate"
+      ]
+    }
+  },
+  "compliance_notes": {
+    "screening_lists": ["OFAC SDN", "UN Sanctions", "EU Sanctions", "UK Sanctions", "PEP Database"],
+    "ongoing_monitoring": true,
+    "risk_based_approach": true,
+    "audit_requirements": [
+      "Maintain transformation audit trail",
+      "Log all data quality issues",
+      "Track manual review decisions",
+      "Document risk scoring rationale"
+    ]
+  }
+}

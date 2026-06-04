@@ -30,7 +30,6 @@ export default function ResultPanel({ result, pct, apiBase }: Props) {
               <a href={`${apiBase}/download/${filename}`} className="text-[11px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)] flex items-center gap-1 transition-colors" download>
                 <Icon name="download" className="w-3 h-3" />Download
               </a>
-              <DownloadCommand filename={filename} apiBase={apiBase} />
               <DownloadCommand filename={filename} apiBase={apiBase} type="sh-curl" />
             </>
           )}

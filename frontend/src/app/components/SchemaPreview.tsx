@@ -39,13 +39,19 @@ export default function SchemaPreview({ sourceBank, targetBanks, sourceColumns, 
       const result: Record<string, MappingInfo[]> = {};
       for (const target of targetBanks) {
         try {
-          const res = await fetch(`${apiBase}/schema/${sourceBank}/${target}`, { headers: apiHeaders() });
-          if (res.ok) {
-            const data = await res.json();
-            const raw = data.mappings || [];
-            result[target] = raw.map(normalizeMapping);
+          let res;
+          if (sourceBank === "auto") {
+            // For auto mode, show a placeholder - actual mapping happens at migration time
+            result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: "(auto-detect)", isDefault: false }));
           } else {
-            result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false }));
+            res = await fetch(`${apiBase}/schema/${sourceBank}/${target}`, { headers: apiHeaders() });
+            if (res.ok) {
+              const data = await res.json();
+              const raw = data.mappings || [];
+              result[target] = raw.map(normalizeMapping);
+            } else {
+              result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false }));
+            }
           }
         } catch { result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false })); }
       }

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
 
     upload_ttl_hours: int = 0
+    preview_store_ttl_hours: int = 2  # Keep previewed files for 2 hours
     output_ttl_hours: int = 168
     audit_ttl_hours: int = 720
     canonical_ttl_hours: int = 72

@@ -36,7 +36,6 @@ export default function MultiBankResults({ multiResults, apiBase }: Props) {
                     <a href={`${apiBase}/download/${r.output_path.split("/").pop()}`} className="text-[11px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)] flex items-center gap-1 transition-colors" download>
                       <Icon name="download" className="w-3 h-3" />Download
                     </a>
-                    <DownloadCommand filename={r.output_path.split("/").pop()!} apiBase={apiBase} />
                     <DownloadCommand filename={r.output_path.split("/").pop()!} apiBase={apiBase} type="sh-curl" />
                   </>
                 )}
@@ -50,6 +49,11 @@ export default function MultiBankResults({ multiResults, apiBase }: Props) {
               <div><p className="text-[11px] text-[var(--muted-foreground)]">Processed</p><p className="text-lg font-bold text-[var(--success)] tabular-nums">{r.processed}</p></div>
               <div><p className="text-[11px] text-[var(--muted-foreground)]">Failed</p><p className="text-lg font-bold text-[var(--error)] tabular-nums">{r.failed}</p></div>
             </div>
+            {r.error && (
+              <div className="px-4 pb-4">
+                <p className="text-[11px] text-[var(--error)] bg-[var(--error-light)] px-2 py-1 rounded">Error: {r.error}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>

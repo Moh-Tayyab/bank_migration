@@ -1,5 +1,11 @@
 version: "3.9"
 
+# Network architecture:
+# - postgres and redis are internal-only (no host port bindings)
+# - They are accessible from other containers via service names (e.g., postgres:5432)
+# - For local dev debugging, add port mappings in a docker-compose.override.yml
+#   e.g., ports: ["127.0.0.1:5432:5432"] for postgres
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,8 +13,6 @@ services:
       - POSTGRES_USER=${DB_USER:-bank_user}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-bank_pass}
       - POSTGRES_DB=${DB_NAME:-bank_migration}
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,8 +24,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -87,6 +89,7 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - API_KEY=${API_KEY:-}
     depends_on:
       migration-api:
         condition: service_healthy
