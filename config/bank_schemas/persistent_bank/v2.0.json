@@ -1,9 +1,0 @@
-{
-  "fields": {
-    "field1": {
-      "type": "str"
-    }
-  },
-  "mappings": [],
-  "masking_rules": {}
-}

@@ -10,7 +10,7 @@ type Props = Pick<MigrationHook,
 >;
 
 const SOURCE_BANKS = ["auto", "source_bank"];
-const TARGET_BANKS = ["private_individuals", "persistent_bank", "target_bank", "test_bank"];
+const TARGET_BANKS = ["private_individuals"];
 
 export default function ConfigCard({
   sourceBank, targetBanks, detectedTarget, outputFormat, banks, file, loading,
