@@ -88,6 +88,58 @@ class OrchestratorConfig:
     risk_config: Optional[Dict[str, Any]] = None
 
 
+# Output contract for the WorldCheck -> Private Individuals transformer: the
+# fields emitted per record (in order) and the PII fields forced to null. Owned
+# by the transformer module so the generic pipeline need not inline them.
+TARGET_FIELDS: List[str] = [
+    "ListSubKey",
+    "ListRecordType",
+    "ListRecordOrigin",
+    "ListRecordId",
+    "FullName",
+    "GivenNames",
+    "FamilyName",
+    "NameType",
+    "PrimaryName",
+    "Title",
+    "IsEntity",
+    "Gender",
+    "AddedDate",
+    "LastUpdatedDate",
+    "EnteredValid",
+    "UpdatedValid",
+    "Category",
+    "SubCategory",
+    "RiskScore",
+    "BaseScore",
+    "RiskCategory",
+    "PEPBoostApplied",
+    "PEPclassification",
+    "IsPEP",
+    "PEPLevel",
+    "DataConfidenceScore",
+    "ConfidenceCategory",
+    "Confidence",
+    "RequiresReview",
+    "RuleApplied",
+    "InactiveFlag",
+    "DeceasedFlag",
+    "SourceValue",
+    "SourceEntityType",
+    "SourceCategory",
+    "SourceSubCategory",
+    "OriginalFirstName",
+    "OriginalLastName",
+]
+PII_NULL_FIELDS: List[str] = [
+    "PassportNumber",
+    "PassportIssCountry",
+    "NationalId",
+    "Identifiers",
+    "OriginalScriptName",
+]
+
+
 class WorldCheckTransformOrchestrator(BaseTransformer):
     """
     Orchestrates all transformations for WorldCheck to Private Individuals migration.

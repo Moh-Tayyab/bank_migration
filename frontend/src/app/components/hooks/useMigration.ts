@@ -14,9 +14,11 @@ function saveHistory(history: HistoryEntry[]) {
 
 export function useMigration() {
   const [file, setFile] = useState<File | null>(null);
+  const [targetFile, setTargetFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [targetDragOver, setTargetDragOver] = useState(false);
   const [sourceBank, setSourceBank] = useState("auto");
-  const [targetBanks, setTargetBanks] = useState<string[]>(["private_individuals"]);
+  const [targetBanks, setTargetBanks] = useState<string[]>([]);
   const [detectedTarget, setDetectedTarget] = useState<string | null>(null);
   const [outputFormat, setOutputFormat] = useState("json");
   const [loading, setLoading] = useState(false);
@@ -30,13 +32,16 @@ export function useMigration() {
   const [showTargetDropdown, setShowTargetDropdown] = useState(false);
   const [dark, setDark] = useState(false);
   const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [targetPreview, setTargetPreview] = useState<{ columns: string[]; sample_values: Record<string, unknown>; file_id: string } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [targetPreviewLoading, setTargetPreviewLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [pollingTask, setPollingTask] = useState<string | null>(null);
   const [pollingBanks, setPollingBanks] = useState<number>(0);
   const [previewedFileId, setPreviewedFileId] = useState<string | null>(null);
+  const [customMappings, setCustomMappings] = useState<{ source: string; target: string }[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,31 +83,11 @@ export function useMigration() {
     });
   }, []);
 
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
-  }, []);
-
-  const onFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const f = e.target.files[0];
-      if (f.size > MAX_FILE_SIZE) {
-        toast("error", `File too large: ${(f.size / 1024 / 1024).toFixed(1)}MB. Max: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
-        return;
-      }
-      setFile(f);
-      setPreview(null);
-      toast("info", `File selected: ${f.name} (${(f.size / 1024).toFixed(1)}KB)`);
-    }
-  }, []);
-
-  const handlePreview = useCallback(async () => {
-    if (!file) return;
+  const autoPreviewFile = useCallback(async (f: File) => {
     setPreviewLoading(true);
     setPreview(null);
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", f);
     form.append("row_limit", "10");
     try {
       const res = await fetch(`${API_BASE}/preview`, { method: "POST", body: form, headers: apiHeaders() });
@@ -114,25 +99,117 @@ export function useMigration() {
       const data = await res.json();
       if (data.rows) {
         setPreview(data);
-        // Store file_id for reuse during migration
-        if (data.file_id) {
-          setPreviewedFileId(data.file_id);
-        }
-        // Store detected target but don't override user's manual selection
+        if (data.file_id) setPreviewedFileId(data.file_id);
         if (data.detected_target_bank) {
           setDetectedTarget(data.detected_target_bank);
-          toast("success", `Preview loaded: ${data.row_count} rows, ${(data.total_columns || data.columns?.length)} columns.`);
-        } else {
-          setDetectedTarget(null);
-          toast("success", `Preview loaded: ${data.row_count} rows, ${(data.total_columns || data.columns?.length)} columns.`);
         }
+        toast("success", `Source: ${data.row_count} rows, ${data.total_columns || data.columns?.length} columns`);
       }
     } catch {
-      toast("error", "Failed to preview file");
+      toast("error", "Failed to preview source file");
     } finally {
       setPreviewLoading(false);
     }
-  }, [file]);
+  }, []);
+
+  const autoParseTarget = useCallback(async (f: File) => {
+    setTargetPreviewLoading(true);
+    setTargetPreview(null);
+    const form = new FormData();
+    form.append("file", f);
+    try {
+      const res = await fetch(`${API_BASE}/schema/upload-target`, { method: "POST", body: form, headers: apiHeaders() });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        toast("error", errData?.detail || `Target parse failed: HTTP ${res.status}`);
+        return;
+      }
+      const data = await res.json();
+      setTargetPreview(data);
+      toast("success", `Target: ${data.columns.length} columns detected`);
+
+      // Auto-generate mappings if source preview is available
+      if (preview?.columns && data.columns.length > 0) {
+        const mapForm = new FormData();
+        mapForm.append("source_columns", JSON.stringify(preview.columns));
+        mapForm.append("target_columns", JSON.stringify(data.columns));
+        const mapRes = await fetch(`${API_BASE}/schema/auto-map-custom`, { method: "POST", body: mapForm, headers: apiHeaders() });
+        if (mapRes.ok) {
+          const mapData = await mapRes.json();
+          setCustomMappings(mapData.mappings || []);
+          toast("info", `Auto-mapped ${mapData.matched} of ${preview.columns.length} source columns`);
+        }
+      }
+    } catch {
+      toast("error", "Failed to parse target file");
+    } finally {
+      setTargetPreviewLoading(false);
+    }
+  }, [preview]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files[0]) {
+      const f = e.dataTransfer.files[0];
+      if (f.size > MAX_FILE_SIZE) {
+        toast("error", `File too large: ${(f.size / 1024 / 1024).toFixed(1)}MB. Max: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        return;
+      }
+      setFile(f);
+      setPreview(null);
+      setPreviewedFileId(null);
+      toast("info", `Source: ${f.name} — auto-previewing...`);
+      autoPreviewFile(f);
+    }
+  }, [autoPreviewFile]);
+
+  const onTargetDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setTargetDragOver(false);
+    if (e.dataTransfer.files[0]) {
+      const f = e.dataTransfer.files[0];
+      if (f.size > MAX_FILE_SIZE) {
+        toast("error", `File too large: ${(f.size / 1024 / 1024).toFixed(1)}MB. Max: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        return;
+      }
+      setTargetFile(f);
+      setTargetPreview(null);
+      setCustomMappings([]);
+      toast("info", `Target: ${f.name} — auto-parsing...`);
+      autoParseTarget(f);
+    }
+  }, [autoParseTarget]);
+
+  const onFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const f = e.target.files[0];
+      if (f.size > MAX_FILE_SIZE) {
+        toast("error", `File too large: ${(f.size / 1024 / 1024).toFixed(1)}MB. Max: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        return;
+      }
+      setFile(f);
+      setPreview(null);
+      setPreviewedFileId(null);
+      toast("info", `Source: ${f.name} — auto-previewing...`);
+      autoPreviewFile(f);
+    }
+  }, [autoPreviewFile]);
+
+  const onTargetFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const f = e.target.files[0];
+      if (f.size > MAX_FILE_SIZE) {
+        toast("error", `File too large: ${(f.size / 1024 / 1024).toFixed(1)}MB. Max: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        return;
+      }
+      setTargetFile(f);
+      setTargetPreview(null);
+      setCustomMappings([]);
+      toast("info", `Target: ${f.name} — auto-parsing...`);
+      autoParseTarget(f);
+    }
+  }, [autoParseTarget]);
 
   const toggleTargetBank = useCallback((bank: string) => {
     setTargetBanks((prev) => prev.includes(bank) ? prev.filter((b) => b !== bank) : [...prev, bank]);
@@ -208,31 +285,45 @@ export function useMigration() {
   }, [sourceBank, targetBanks, outputFormat]);
 
   const executeMigration = useCallback(async () => {
-    if (!file || targetBanks.length === 0) return;
+    if (!file) return;
     setLoading(true);
     setResult(null);
     setMultiResults([]);
     setAuditTrail([]);
     setErrMsg("");
     setPreview(null);
-    const form = new FormData();
 
-    // If we have a previewed file_id, send it instead of re-uploading
-    if (previewedFileId) {
-      form.append("file_id", previewedFileId);
-      toast("info", "Using stored file from preview...");
-    } else {
-      form.append("file", file);
-    }
-
-    form.append("source_bank", sourceBank);
-    form.append("target_banks", JSON.stringify(targetBanks));
-    form.append("output_format", outputFormat);
     try {
-      const res = await fetch(`${API_BASE}/migrate/upload`, { method: "POST", body: form, headers: apiHeaders() });
+      let res: Response;
+
+      if (targetFile && targetPreview) {
+        // Dual-file migration: source file + target file
+        const form = new FormData();
+        form.append("source_file", file);
+        form.append("target_file", targetFile);
+        form.append("output_format", outputFormat);
+        if (customMappings.length > 0) {
+          form.append("mappings", JSON.stringify(customMappings));
+        }
+        toast("info", "Starting custom migration with target file schema...");
+        res = await fetch(`${API_BASE}/migrate/upload-custom`, { method: "POST", body: form, headers: apiHeaders() });
+      } else {
+        // Standard migration: source file + predefined bank schema
+        const form = new FormData();
+        if (previewedFileId) {
+          form.append("file_id", previewedFileId);
+          toast("info", "Using stored file from preview...");
+        } else {
+          form.append("file", file);
+        }
+        form.append("source_bank", sourceBank);
+        form.append("target_banks", JSON.stringify(targetBanks));
+        form.append("output_format", outputFormat);
+        res = await fetch(`${API_BASE}/migrate/upload`, { method: "POST", body: form, headers: apiHeaders() });
+      }
+
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
-        // If file_id expired, clear it and notify user
         if (errData?.detail?.includes("not found") || errData?.detail?.includes("expired")) {
           setPreviewedFileId(null);
           toast("error", "Preview file expired. Please preview the file again.");
@@ -241,10 +332,11 @@ export function useMigration() {
         }
         return;
       }
+
       const data = await res.json();
       if (data.task_id) {
         toast("info", "Migration queued. Polling for results...");
-        pollTaskStatus(data.task_id, targetBanks.length);
+        pollTaskStatus(data.task_id, targetBanks.length || 1);
       } else {
         const isMulti = Array.isArray(data.results);
         if (isMulti) setMultiResults(data.results);
@@ -256,7 +348,8 @@ export function useMigration() {
           toast("success", `Migration completed: ${totalProcessed} records processed`);
           const entry: HistoryEntry = {
             id: Date.now().toString(), timestamp: new Date().toISOString(),
-            sourceBank, targetBanks, outputFormat,
+            sourceBank, targetBanks: targetBanks.length > 0 ? targetBanks : ["custom_target"],
+            outputFormat,
             totalRecords: data.total_records || (isMulti ? (data.results as ResultData[]).reduce((s: number, r: ResultData) => s + (r.total_records || 0), 0) : 0),
             processed: totalProcessed,
             failed: data.failed || (isMulti ? (data.results as ResultData[]).reduce((s: number, r: ResultData) => s + (r.failed || 0), 0) : 0),
@@ -280,12 +373,13 @@ export function useMigration() {
     } finally {
       setLoading(false);
     }
-  }, [file, previewedFileId, sourceBank, targetBanks, outputFormat, history, pollTaskStatus]);
+  }, [file, targetFile, targetPreview, previewedFileId, sourceBank, targetBanks, outputFormat, customMappings, history, pollTaskStatus]);
 
   const handleMigrate = useCallback(() => {
-    if (!file || targetBanks.length === 0) return;
+    if (!file) return;
+    if (targetBanks.length === 0 && !targetFile) return;
     setShowConfirm(true);
-  }, [file, targetBanks]);
+  }, [file, targetBanks, targetFile]);
 
   const handleRetry = useCallback((entry: HistoryEntry) => {
     setSourceBank(entry.sourceBank);
@@ -336,15 +430,15 @@ export function useMigration() {
   const pipelineStage = result ? "result" : pollingTask ? "migrate" : file ? "config" : "upload";
 
   return {
-    file, dragOver, sourceBank, targetBanks, detectedTarget, outputFormat,
-    result, multiResults, auditTrail, preview, banks, banksLoading,
-    loading, previewLoading, pollingTask, uploadProgress, pollingBanks,
+    file, targetFile, dragOver, targetDragOver, sourceBank, targetBanks, detectedTarget, outputFormat,
+    result, multiResults, auditTrail, preview, targetPreview, banks, banksLoading,
+    loading, previewLoading, targetPreviewLoading, pollingTask, uploadProgress, pollingBanks,
     errMsg, dark, showAudit, showTargetDropdown, showConfirm, history,
-    pipelineStage, sourceColumns, pct, previewedFileId,
+    pipelineStage, sourceColumns, pct, previewedFileId, customMappings,
     inputRef,
-    setSourceBank, setOutputFormat, setDragOver, setPreview,
-    setShowTargetDropdown, setShowConfirm, setShowAudit,
-    onDrop, onFileSelect, handlePreview, toggleTargetBank,
+    setSourceBank, setOutputFormat, setDragOver, setTargetDragOver, setTargetFile, setPreview, setTargetPreview,
+    setShowTargetDropdown, setShowConfirm, setShowAudit, setCustomMappings,
+    onDrop, onTargetDrop, onFileSelect, onTargetFileSelect, toggleTargetBank,
     handleMigrate, executeMigration, handleRetry, handleClearHistory,
     handleExportAudit, toggleTheme,
     apiBase: API_BASE,

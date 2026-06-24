@@ -29,8 +29,14 @@ function normalizeMapping(m: Record<string, unknown>): MappingInfo {
 
 export default function SchemaPreview({ sourceBank, targetBanks, sourceColumns, banks, apiBase }: SchemaPreviewProps) {
   const [mappings, setMappings] = useState<Record<string, MappingInfo[]>>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedMappings, setEditedMappings] = useState<Record<string, MappingInfo[]>>({});
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => {
+    setEditedMappings(mappings);
+  }, [mappings]);
 
   useEffect(() => {
     if (targetBanks.length === 0) return;
@@ -42,7 +48,7 @@ export default function SchemaPreview({ sourceBank, targetBanks, sourceColumns, 
           let res;
           if (sourceBank === "auto") {
             // For auto mode, show a placeholder - actual mapping happens at migration time
-            result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: "(auto-detect)", isDefault: false }));
+            result[target] = sourceColumns.map((col) => ({ sourceField: col, targetField: col, isDefault: false }));
           } else {
             res = await fetch(`${apiBase}/schema/${sourceBank}/${target}`, { headers: apiHeaders() });
             if (res.ok) {
@@ -76,45 +82,59 @@ export default function SchemaPreview({ sourceBank, targetBanks, sourceColumns, 
             </p>
           </div>
         </div>
-        <button onClick={() => setExpanded(!expanded)} className="text-[11px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors cursor-pointer">
-          {expanded ? "Collapse" : "Expand"}
-        </button>
+        <div className="flex gap-2">
+          {isEditing && (
+            <button onClick={() => {
+              setMappings(editedMappings);
+              setIsEditing(false);
+            }} className="text-[11px] font-semibold text-green-600 hover:text-green-700 transition-colors cursor-pointer">
+              Save
+            </button>
+          )}
+          <button onClick={() => {
+            if (isEditing) {
+              setEditedMappings(mappings);
+            }
+            setIsEditing(!isEditing);
+          }} className="text-[11px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors cursor-pointer">
+            {isEditing ? "Cancel" : "Edit"}
+          </button>
+          <button onClick={() => setExpanded(!expanded)} className="text-[11px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors cursor-pointer">
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        </div>
       </div>
       {expanded && (
         <div className="p-5 space-y-4 max-h-96 overflow-y-auto">
           {targetBanks.map((target) => {
-            const bankMappings = mappings[target] || [];
+            const bankMappings = isEditing ? (editedMappings[target] || []) : (mappings[target] || []);
             return (
               <div key={target} className="space-y-1.5">
                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">{target}</h4>
                 <div className="grid gap-1">
-                  {bankMappings.length > 0 ? (
-                    bankMappings.map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[var(--muted)]/50">
-                        <span className="font-mono text-[var(--foreground)] font-medium">{m.sourceField}</span>
-                        {m.transform && (
-                          <span className="px-1.5 py-0.5 rounded bg-[var(--primary-light)] text-[var(--primary)] text-[10px] font-bold">{m.transform}</span>
-                        )}
-                        <Icon name="arrow-right" className="w-3 h-3 text-[var(--muted-foreground)]" />
-                        <span className={`font-mono font-medium ${m.isDefault ? "text-[var(--warning)]" : "text-[var(--foreground)]"}`}>
-                          {m.targetField}
-                        </span>
-                        {m.isDefault && (
-                          <span className="px-1.5 py-0.5 rounded bg-[var(--warning-light)] text-[var(--warning)] text-[10px] font-bold">default</span>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[var(--muted)]/50">
-                      {sourceColumns.map((col) => (
-                        <div key={col} className="flex items-center gap-2">
-                          <span className="font-mono text-[var(--foreground)] font-medium">{col}</span>
+                  {bankMappings.map((m, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[var(--muted)]/50">
+                      <span className="font-mono text-[var(--foreground)] font-medium">{m.sourceField}</span>
+                      {isEditing ? (
+                        <input
+                          value={m.targetField}
+                          onChange={(e) => {
+                            const newMappings = { ...editedMappings };
+                            newMappings[target][i].targetField = e.target.value;
+                            setEditedMappings(newMappings);
+                          }}
+                          className="font-mono font-medium bg-transparent border-b border-[var(--primary)] text-[var(--foreground)] outline-none"
+                        />
+                      ) : (
+                        <>
                           <Icon name="arrow-right" className="w-3 h-3 text-[var(--muted-foreground)]" />
-                          <span className="font-mono text-[var(--foreground)] font-medium">{col}</span>
-                        </div>
-                      ))}
+                          <span className={`font-mono font-medium ${m.isDefault ? "text-[var(--warning)]" : "text-[var(--foreground)]"}`}>
+                            {m.targetField}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
             );

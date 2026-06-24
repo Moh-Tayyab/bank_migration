@@ -75,7 +75,7 @@ class BankRegistry:
         return target.mappings
 
     def list_banks(self) -> List[str]:
-        return list(self._schemas.keys())
+        return [b for b in self._schemas.keys() if not b.startswith("custom_")]
 
     def get_masking_rules(self, bank: str, version: str = "latest") -> Dict[str, str]:
         schema = self.get_schema(bank, version)

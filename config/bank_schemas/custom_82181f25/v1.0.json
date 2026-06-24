@@ -1,0 +1,564 @@
+{
+  "fields": {
+    "ListSubKey": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: ListSubKey"
+    },
+    "ListRecordType": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: ListRecordType"
+    },
+    "ListRecordOrigin": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: ListRecordOrigin"
+    },
+    "ListRecordId": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: ListRecordId"
+    },
+    "PassportNumber": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: PassportNumber"
+    },
+    "PassportIssCountry": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: PassportIssCountry"
+    },
+    "NationalId": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: NationalId"
+    },
+    "Identifiers": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Identifiers"
+    },
+    "Title": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Title"
+    },
+    "FullName": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: FullName"
+    },
+    "GivenNames": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: GivenNames"
+    },
+    "FamilyName": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: FamilyName"
+    },
+    "NameType": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: NameType"
+    },
+    "NameQuality": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: NameQuality"
+    },
+    "PrimaryName": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: PrimaryName"
+    },
+    "OriginalScriptName": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: OriginalScriptName"
+    },
+    "Gender": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Gender"
+    },
+    "Occupation": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Occupation"
+    },
+    "DateOfBirth": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: DateOfBirth"
+    },
+    "YearOfBirth": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: YearOfBirth"
+    },
+    "DeceasedFlag": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: DeceasedFlag"
+    },
+    "DeceasedDate": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: DeceasedDate"
+    },
+    "Address1": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Address1"
+    },
+    "Address2": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Address2"
+    },
+    "Address3": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Address3"
+    },
+    "Address4": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: Address4"
+    },
+    "City": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: City"
+    },
+    "State": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: State"
+    },
+    "PostalCode": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: PostalCode"
+    },
+    "AddressCountryCode": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: AddressCountryCode"
+    },
+    "ResidencyCountryCode": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: ResidencyCountryCode"
+    },
+    "CountryOfBirthCode": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CountryOfBirthCode"
+    },
+    "NationalityCountryCodes": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: NationalityCountryCodes"
+    },
+    "ProfileHyperlink": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: ProfileHyperlink"
+    },
+    "RiskScore": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: RiskScore"
+    },
+    "RiskScorePEP": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: RiskScorePEP"
+    },
+    "AddedDate": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: AddedDate"
+    },
+    "LastUpdatedDate": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: LastUpdatedDate"
+    },
+    "DataConfidenceScore": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: DataConfidenceScore"
+    },
+    "DataConfidenceComment": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: DataConfidenceComment"
+    },
+    "InactiveFlag": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: InactiveFlag"
+    },
+    "InactiveSinceDate": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: InactiveSinceDate"
+    },
+    "PEPclassification": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: PEPclassification"
+    },
+    "CustomString1": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString1"
+    },
+    "CustomString2": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString2"
+    },
+    "CustomString3": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString3"
+    },
+    "CustomString4": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString4"
+    },
+    "CustomString5": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString5"
+    },
+    "CustomString6": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString6"
+    },
+    "CustomString7": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString7"
+    },
+    "CustomString8": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString8"
+    },
+    "CustomString9": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString9"
+    },
+    "CustomString10": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString10"
+    },
+    "CustomString11": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString11"
+    },
+    "CustomString12": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString12"
+    },
+    "CustomString13": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString13"
+    },
+    "CustomString14": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString14"
+    },
+    "CustomString15": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString15"
+    },
+    "CustomString16": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString16"
+    },
+    "CustomString17": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString17"
+    },
+    "CustomString18": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString18"
+    },
+    "CustomString19": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString19"
+    },
+    "CustomString20": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString20"
+    },
+    "CustomString21": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString21"
+    },
+    "CustomString22": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString22"
+    },
+    "CustomString23": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString23"
+    },
+    "CustomString24": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString24"
+    },
+    "CustomString25": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString25"
+    },
+    "CustomString26": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString26"
+    },
+    "CustomString27": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString27"
+    },
+    "CustomString28": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString28"
+    },
+    "CustomString29": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString29"
+    },
+    "CustomString30": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString30"
+    },
+    "CustomString31": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString31"
+    },
+    "CustomString32": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString32"
+    },
+    "CustomString33": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString33"
+    },
+    "CustomString34": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString34"
+    },
+    "CustomString35": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString35"
+    },
+    "CustomString36": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString36"
+    },
+    "CustomString37": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString37"
+    },
+    "CustomString38": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString38"
+    },
+    "CustomString39": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString39"
+    },
+    "CustomString40": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomString40"
+    },
+    "CustomDate1": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomDate1"
+    },
+    "CustomDate2": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomDate2"
+    },
+    "CustomDate3": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomDate3"
+    },
+    "CustomDate4": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomDate4"
+    },
+    "CustomDate5": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomDate5"
+    },
+    "CustomNumber1": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomNumber1"
+    },
+    "CustomNumber2": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomNumber2"
+    },
+    "CustomNumber3": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomNumber3"
+    },
+    "CustomNumber4": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomNumber4"
+    },
+    "CustomNumber5": {
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Auto-inferred from uploaded file column: CustomNumber5"
+    }
+  },
+  "mappings": [],
+  "masking_rules": {}
+}

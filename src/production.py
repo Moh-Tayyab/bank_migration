@@ -19,10 +19,6 @@ from .stages import (
 )
 from .transaction_rollback import TransactionManager
 
-WORLDCHECK_PAIRS = {
-    ("worldcheck", "private_individuals"),
-}
-
 
 def _build_generic_pipeline(audit: Optional[AuditLogger] = None) -> Pipeline:
     """Build the default generic migration pipeline."""
@@ -46,91 +42,36 @@ class PipelineOrchestrator:
         self._registry = BankRegistry(str(settings.bank_schema_dir))
         self._audit_logger = AuditLogger()
         self._pipeline = _build_generic_pipeline(self._audit_logger)
-        self._wc_orchestrator = None
 
-    def _get_wc_orchestrator(self):
-        if self._wc_orchestrator is None:
-            from .transformers import create_orchestrator
-
-            self._wc_orchestrator = create_orchestrator()
-        return self._wc_orchestrator
-
-    def _is_worldcheck_pair(self, source_bank: str, target_bank: str) -> bool:
-        return (source_bank, target_bank) in WORLDCHECK_PAIRS
-
-    def _run_worldcheck_pipeline(
+    def _run_transformer_pipeline(
         self,
         filepath: str,
         source_bank: str,
         target_bank: str,
+        transformer,
     ) -> MigrationResult:
+        from .transformers import PII_NULL_FIELDS, TARGET_FIELDS
+
         records = FormatDetector.extract(filepath)
-        orchestrator = self._get_wc_orchestrator()
-        wc_results = orchestrator.transform_batch(records)
-        summary = orchestrator.get_batch_summary(wc_results)
+        results = transformer.transform_batch(records)
+        summary = transformer.get_batch_summary(results)
 
         self._audit_logger.log(
             AuditEvent.TRANSFORM,
             bank_pair=f"{source_bank}->{target_bank}",
             details=(
-                f"WorldCheck pipeline: {summary['successful_transformations']}/{summary['total_records']} "
+                f"Transformer pipeline ({source_bank}): "
+                f"{summary['successful_transformations']}/{summary['total_records']} "
                 f"success, {summary['requires_review']} review, "
                 f"{summary['pep_count']} PEP, avg confidence {summary['average_confidence']:.2f}"
             ),
         )
 
-        TARGET_FIELDS = [
-            "ListSubKey",
-            "ListRecordType",
-            "ListRecordOrigin",
-            "ListRecordId",
-            "FullName",
-            "GivenNames",
-            "FamilyName",
-            "NameType",
-            "PrimaryName",
-            "Title",
-            "IsEntity",
-            "Gender",
-            "AddedDate",
-            "LastUpdatedDate",
-            "EnteredValid",
-            "UpdatedValid",
-            "Category",
-            "SubCategory",
-            "RiskScore",
-            "BaseScore",
-            "RiskCategory",
-            "PEPBoostApplied",
-            "PEPclassification",
-            "IsPEP",
-            "PEPLevel",
-            "DataConfidenceScore",
-            "ConfidenceCategory",
-            "Confidence",
-            "RequiresReview",
-            "RuleApplied",
-            "InactiveFlag",
-            "DeceasedFlag",
-            "SourceValue",
-            "SourceEntityType",
-            "SourceCategory",
-            "SourceSubCategory",
-            "OriginalFirstName",
-            "OriginalLastName",
-        ]
-        PII_NULL = [
-            "PassportNumber",
-            "PassportIssCountry",
-            "NationalId",
-            "Identifiers",
-            "OriginalScriptName",
-        ]
         target_records = []
         failed = 0
-        for r in wc_results:
+        for r in results:
             tgt = {f: r.target_record.get(f) for f in TARGET_FIELDS}
-            for f in PII_NULL:
+            for f in PII_NULL_FIELDS:
                 tgt[f] = None
             tgt["MigrationTimestamp"] = datetime.utcnow().isoformat() + "Z"
             tgt["MigrationSource"] = source_bank.upper()
@@ -161,10 +102,14 @@ class PipelineOrchestrator:
     ) -> MigrationResult:
         if source_bank == "auto":
             result = self._pipeline.run_file(filepath, "__auto__", target_bank)
-        elif self._is_worldcheck_pair(source_bank, target_bank):
-            result = self._run_worldcheck_pipeline(filepath, source_bank, target_bank)
         else:
-            result = self._pipeline.run_file(filepath, source_bank, target_bank)
+            from .transformers import get_transformer
+
+            transformer = get_transformer(source_bank)
+            if transformer is not None:
+                result = self._run_transformer_pipeline(filepath, source_bank, target_bank, transformer)
+            else:
+                result = self._pipeline.run_file(filepath, source_bank, target_bank)
         if result.success and result.processed > 0:
             result = self._generate_output(result, target_bank, output_format)
         return result

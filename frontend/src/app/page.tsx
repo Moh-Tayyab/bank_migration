@@ -1,469 +1,376 @@
 "use client";
 import { useState } from "react";
 import Icon from "./components/Icon";
-import { toast, ToastProvider } from "./components/Toast";
-import ConfirmationDialog from "./components/ConfirmationDialog";
+import { ToastProvider } from "./components/Toast";
 import FilePreview from "./components/FilePreview";
-import SchemaPreview from "./components/SchemaPreview";
-import MigrationHistory from "./components/MigrationHistory";
-import PipelineSteps from "./components/PipelineSteps";
-import UploadCard from "./components/UploadCard";
-import ConfigCard from "./components/ConfigCard";
-import ResultPanel from "./components/ResultPanel";
-import MultiBankResults from "./components/MultiBankResults";
-import AuditPanel from "./components/AuditPanel";
-import PollingCard from "./components/PollingCard";
-import DownloadCommand from "./components/DownloadCommand";
-import { BanksBarSkeleton } from "./components/Skeleton";
-import { fmt } from "./components/types";
-import { useMigration } from "./components/hooks/useMigration";
 import { useSqlLoader } from "./components/hooks/useSqlLoader";
 
-type AppMode = "migration" | "sqlldr";
-
 function MigrationPageInner() {
-  const [mode, setMode] = useState<AppMode>("migration");
-  const m = useMigration();
   const s = useSqlLoader();
+  const [addSelections, setAddSelections] = useState<Record<string, string>>({});
 
-  const bankNames = m.targetBanks.map(fmt).join(", ");
+  const usedTargets = s.customMappings.map((m) => m.target);
+  const unmatchedSource = s.sourceColumns.filter(
+    (c) => !s.customMappings.some((m) => m.source === c)
+  );
+  const availableTargets = s.targetColumns.filter((t) => !usedTargets.includes(t));
+  const showMappingCard = !!s.targetPreview && s.sourceColumns.length > 0;
 
   return (
-    <>
-      <ConfirmationDialog
-        open={m.showConfirm}
-        title="Start Migration?"
-        message={`Migrating from ${fmt(m.sourceBank)} to ${fmt(m.detectedTarget || "auto-detected")}. Output format: ${m.outputFormat.toUpperCase()}. This action cannot be undone.`}
-        confirmLabel="Start Migration"
-        cancelLabel="Cancel"
-        variant="warning"
-        onConfirm={() => { m.setShowConfirm(false); m.executeMigration(); }}
-        onCancel={() => m.setShowConfirm(false)}
-      />
-
-      <div className="min-h-screen relative overflow-hidden flex flex-col">
-        <div className="orb orb-1" aria-hidden="true" />
-        <div className="orb orb-2" aria-hidden="true" />
-
-        {/* Header */}
-        <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-[var(--border)]" role="banner" style={{ background: 'color-mix(in srgb, var(--card) 85%, transparent)' }}>
-          <div className="max-w-[1440px] mx-auto h-14 flex items-center justify-between px-4 lg:px-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center text-white font-bold text-xs tracking-tight shadow-md">
-                UW
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-sm font-semibold text-[var(--foreground)] leading-tight">Data Migration</h1>
-                <p className="text-[10px] text-[var(--muted-foreground)]">Secure multi-bank ETL pipeline</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Mode Switcher */}
-              <div className="flex items-center bg-[var(--muted)] rounded-lg p-0.5">
-                <button
-                  onClick={() => setMode("migration")}
-                  className={`px-3 py-1 rounded-md text-[11px] font-medium transition-all ${mode === "migration" ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}
-                >
-                  Migration
-                </button>
-                <button
-                  onClick={() => setMode("sqlldr")}
-                  className={`px-3 py-1 rounded-md text-[11px] font-medium transition-all ${mode === "sqlldr" ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}
-                >
-                  SQL*Loader
-                </button>
-              </div>
-              {mode === "migration" && <PipelineSteps current={m.pipelineStage} />}
-              <div className="w-px h-5 bg-[var(--border)] hidden sm:block" />
-              <a
-                href="http://localhost:8000/docs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] border border-[var(--border)] transition-all"
-              >
-                <Icon name="external" className="w-3 h-3" />API Docs
-              </a>
-              <button
-                onClick={m.toggleTheme}
-                className="p-2 rounded-lg transition-all hover:bg-[var(--muted)] text-[var(--muted-foreground)] cursor-pointer"
-                aria-label={m.dark ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                <div className={`transition-transform duration-200 ${m.dark ? "rotate-180" : "rotate-0"}`}>
-                  {m.dark ? <Icon name="sun" className="w-4 h-4" /> : <Icon name="moon" className="w-4 h-4" />}
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1 max-w-[1280px] mx-auto w-full px-4 lg:px-6 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="lg:col-span-5 space-y-4">
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`step-number ${s.file ? "done" : "active"}`}>
+                    {s.file ? <Icon name="check" className="w-2.5 h-2.5" /> : "1"}
+                  </span>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">Source File</h3>
                 </div>
-              </button>
-            </div>
-          </div>
-        </header>
+                {s.file && (
+                  <button onClick={s.handleReset} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--error)] cursor-pointer" type="button">Clear</button>
+                )}
+              </div>
 
-        {/* Connected Banks Bar - Only for migration mode */}
-        {mode === "migration" && (m.banksLoading ? (
-          <BanksBarSkeleton />
-        ) : m.banks.length > 0 ? (
-          <div className="border-b border-[var(--border)] bg-[var(--card)]/50 animate-fade-in">
-            <div className="max-w-[1440px] mx-auto px-4 lg:px-6 py-2 flex items-center gap-3 text-[11px] text-[var(--muted-foreground)] overflow-x-auto">
-              <span className="inline-flex items-center gap-1.5 shrink-0 font-semibold">
-                <Icon name="database" className="w-3.5 h-3.5 text-[var(--primary)]" />
-                Connected
-              </span>
-              {m.banks.map((b) => (
-                <span key={b} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--muted)] border border-[var(--border)] whitespace-nowrap text-[var(--foreground)] font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse-dot" />
-                  {fmt(b)}
+              {!s.file ? (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); s.setDragOver(true); }}
+                  onDragLeave={() => s.setDragOver(false)}
+                  onDrop={s.onDrop}
+                  className={`dropzone ${s.dragOver ? "active" : ""}`}
+                >
+                  <input ref={s.inputRef} type="file" accept=".csv,.xlsx,.xls,.json,.xml" onChange={s.onFileSelect} className="hidden" />
+                  <div className="w-9 h-9 rounded-lg bg-[var(--primary-light)] flex items-center justify-center mb-3 mx-auto">
+                    <Icon name="upload" className="w-4 h-4 text-[var(--primary)]" />
+                  </div>
+                  <p className="text-xs font-medium text-[var(--foreground)] mb-0.5">Upload source data</p>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mb-3">CSV, Excel, JSON, XML</p>
+                  <button onClick={() => s.inputRef.current?.click()} className="btn-secondary" type="button">Select File</button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[var(--muted)]">
+                    <Icon name="file" className="w-4 h-4 text-[var(--primary)] shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[var(--foreground)] truncate">{s.file.name}</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]">{(s.file.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                    <Icon name="check" className="w-3.5 h-3.5 text-[var(--success)] shrink-0" />
+                  </div>
+                  {s.previewLoading && (
+                    <div className="flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
+                      <span className="w-3 h-3 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                      Reading columns...
+                    </div>
+                  )}
+                  {s.preview && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--success)]">
+                      <Icon name="check-circle" className="w-3 h-3" />
+                      {s.preview.columns.length} columns &middot; {s.preview.row_count} rows
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`step-number ${s.targetFile ? "done" : ""}`}>
+                  {s.targetFile ? <Icon name="check" className="w-2.5 h-2.5" /> : "2"}
                 </span>
-              ))}
-            </div>
-          </div>
-        ) : null)}
-
-        {/* Main Content */}
-        <main id="main-content" className="flex-1 max-w-[1440px] mx-auto w-full px-4 lg:px-6 py-6" tabIndex={-1}>
-          {mode === "migration" ? (
-            <>
-              <MigrationHistory history={m.history} onClear={m.handleClearHistory} onRetry={m.handleRetry} />
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-                {/* Left Column: Upload + Config */}
-                <div className="lg:col-span-4 space-y-5">
-                  <UploadCard
-                    file={m.file} dragOver={m.dragOver} previewLoading={m.previewLoading}
-                    inputRef={m.inputRef} onDrop={m.onDrop} onFileSelect={m.onFileSelect}
-                    setDragOver={m.setDragOver} handlePreview={m.handlePreview}
-                  />
-                  <ConfigCard
-                    sourceBank={m.sourceBank} targetBanks={m.targetBanks} detectedTarget={m.detectedTarget} outputFormat={m.outputFormat}
-                    banks={m.banks} file={m.file} loading={m.loading}
-                    pollingTask={m.pollingTask} pollingBanks={m.pollingBanks}
-                    setSourceBank={m.setSourceBank}
-                    setOutputFormat={m.setOutputFormat}
-                    handleMigrate={m.handleMigrate}
-                    toggleTargetBank={m.toggleTargetBank}
-                    handleMigrate={m.handleMigrate}
-                  />
-                </div>
-
-                {/* Right Column: Results */}
-                <div className="lg:col-span-8 space-y-5">
-                  {/* Error */}
-                  {m.errMsg && (
-                    <div className="card border-[var(--error)]/30 animate-scale-in" style={{ background: "var(--error-light)" }} role="alert">
-                      <div className="p-4 flex items-start gap-3">
-                        <div className="p-1.5 rounded-lg bg-[var(--error)]/10 shrink-0">
-                          <Icon name="xmark" className="w-4 h-4 text-[var(--error)]" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-[var(--error)]">Migration Error</p>
-                          <p className="text-xs text-[var(--error)]/80 mt-0.5 leading-relaxed">{m.errMsg}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Polling */}
-                  <PollingCard pollingTask={m.pollingTask} uploadProgress={m.uploadProgress} pollingBanks={m.pollingBanks} />
-
-                  {/* Preview */}
-                  {m.preview && (
-                    <FilePreview
-                      filename={m.preview.filename} format={m.preview.format}
-                      columns={m.preview.columns} rows={m.preview.rows}
-                      rowCount={m.preview.row_count} onClose={() => m.setPreview(null)}
-                    />
-                  )}
-
-                  {/* Schema Preview */}
-                  {m.sourceColumns.length > 0 && m.targetBanks.length > 0 && (
-                    <SchemaPreview
-                      sourceBank={m.sourceBank} targetBanks={m.targetBanks}
-                      sourceColumns={m.sourceColumns} banks={m.banks} apiBase={m.apiBase}
-                    />
-                  )}
-
-                  {/* Multi-Bank Results */}
-                  <MultiBankResults multiResults={m.multiResults} apiBase={m.apiBase} />
-
-                  {/* Single Result */}
-                  {m.result && m.multiResults.length === 0 && (
-                    <ResultPanel result={m.result} pct={m.pct} apiBase={m.apiBase} />
-                  )}
-
-                  {/* Audit Trail */}
-                  <AuditPanel
-                    auditTrail={m.auditTrail} showAudit={m.showAudit}
-                    setShowAudit={m.setShowAudit} handleExportAudit={m.handleExportAudit}
-                  />
-
-                  {/* Empty State */}
-                  {!m.result && !m.errMsg && !m.pollingTask && (
-                    <div className="card-elevated p-10 flex flex-col items-center justify-center text-center min-h-[380px] animate-fade-in">
-                      <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-5 animate-success-check shadow-lg" style={{ boxShadow: '0 8px 24px rgba(79, 70, 229, 0.25)' }}>
-                        <Icon name="layers" className="w-8 h-8 text-white" />
-                      </div>
-                      <h2 className="text-lg font-bold text-[var(--foreground)]">Ready to Migrate</h2>
-                      <p className="text-sm text-[var(--muted-foreground)] max-w-sm mt-2 leading-relaxed">
-                        Upload a data file and preview it to auto-detect the target bank, then click{" "}
-                        <span className="font-semibold gradient-text">Migrate Data</span> to start the pipeline.
-                      </p>
-                      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                        {[
-                          { icon: "zap", label: "400 rec/s" },
-                          { icon: "shield", label: "AES-256" },
-                          { icon: "audit", label: "ACID rollback" },
-                        ].map((f) => (
-                          <span key={f.label} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--muted)] border border-[var(--border)] text-[11px] text-[var(--muted-foreground)] font-medium">
-                            <Icon name={f.icon} className="w-3 h-3 text-[var(--primary)]" />
-                            {f.label}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Step Guide */}
-                      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left w-full max-w-lg">
-                        {[
-                          { step: "1", title: "Upload", desc: "Drop a CSV, JSON, or spreadsheet file" },
-                          { step: "2", title: "Preview", desc: "Auto-detects target bank schema" },
-                          { step: "3", title: "Migrate", desc: "One click starts the pipeline" },
-                        ].map((s) => (
-                          <div key={s.step} className="flex items-start gap-3">
-                            <span className="w-6 h-6 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[11px] font-bold flex items-center justify-center shrink-0">
-                              {s.step}
-                            </span>
-                            <div>
-                              <p className="text-xs font-semibold text-[var(--foreground)]">{s.title}</p>
-                              <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">{s.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">Target Schema</h3>
               </div>
 
-              {/* Mobile Bottom Action Bar - Migration */}
-              <div className="mobile-action-bar">
-                <button
-                  onClick={m.handleMigrate}
-                  disabled={!m.file || m.targetBanks.length === 0 || m.loading}
-                  className="btn-primary w-full h-11 text-sm flex items-center justify-center gap-2 cursor-pointer"
-                  type="button"
+              {!s.targetFile ? (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); s.setTargetDragOver(true); }}
+                  onDragLeave={() => s.setTargetDragOver(false)}
+                  onDrop={s.onTargetDrop}
+                  className={`dropzone ${s.targetDragOver ? "active" : ""}`}
                 >
-                  {m.loading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {m.pollingTask ? `Polling...` : "Migrating..."}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Icon name="arrow" className="w-4 h-4" />
-                      Migrate Data
-                    </span>
-                  )}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* SQL*Loader Mode */}
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">SQL*Loader Script Generator</h2>
-                <p className="text-sm text-[var(--muted-foreground)]">Upload your bank data file to generate an Oracle SQL*Loader script. The target bank can run this script to load data into their database.</p>
-              </div>
-
-              {/* SQL*Loader Upload Card */}
-              <div className="card p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-[var(--foreground)]">1. Upload File</h3>
-                  {s.file && (
-                    <button
-                      onClick={s.handleReset}
-                      className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
+                  <input ref={s.targetInputRef} type="file" accept=".csv,.xlsx,.xls,.json,.xml" onChange={s.onTargetFileSelect} className="hidden" />
+                  <div className="w-9 h-9 rounded-lg bg-[var(--primary-light)] flex items-center justify-center mb-3 mx-auto">
+                    <Icon name="upload" className="w-4 h-4 text-[var(--primary)]" />
+                  </div>
+                  <p className="text-xs font-medium text-[var(--foreground)] mb-0.5">Upload target format</p>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mb-3">Sample file of desired output</p>
+                  <button onClick={() => s.targetInputRef.current?.click()} className="btn-secondary" type="button">Select File</button>
                 </div>
-
-                {!s.file ? (
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); s.setDragOver(true); }}
-                    onDragLeave={() => s.setDragOver(false)}
-                    onDrop={s.onDrop}
-                    className={`dropzone ${s.dragOver ? "active" : ""}`}
-                  >
-                    <input
-                      ref={s.inputRef}
-                      type="file"
-                      accept=".csv,.xlsx,.xls,.json"
-                      onChange={s.onFileSelect}
-                      className="hidden"
-                    />
-                    <div className="w-12 h-12 rounded-xl bg-[var(--primary-light)] flex items-center justify-center mb-4 mx-auto">
-                      <Icon name="upload" className="w-6 h-6 text-[var(--primary)]" />
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[var(--muted)]">
+                    <Icon name="file" className="w-4 h-4 text-[var(--primary)] shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[var(--foreground)] truncate">{s.targetFile.name}</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]">{(s.targetFile.size / 1024).toFixed(1)} KB</p>
                     </div>
-                    <p className="text-sm font-medium text-[var(--foreground)] mb-1">Drop your CSV or Excel file here</p>
-                    <p className="text-[11px] text-[var(--muted-foreground)] mb-4">or click to browse</p>
-                    <button
-                      onClick={() => s.inputRef.current?.click()}
-                      className="btn-secondary text-xs"
-                    >
-                      Select File
+                    <button onClick={() => { s.setTargetFile(null); s.setTargetPreview(null); s.setCustomMappings([]); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--error)] cursor-pointer" type="button">
+                      Remove
                     </button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--muted)]">
-                      <Icon name="file" className="w-5 h-5 text-[var(--primary)]" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[var(--foreground)] truncate">{s.file.name}</p>
-                        <p className="text-[11px] text-[var(--muted-foreground)]">{(s.file.size / 1024).toFixed(1)} KB</p>
+                  {s.targetPreviewLoading && (
+                    <div className="flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
+                      <span className="w-3 h-3 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                      Parsing & mapping...
+                    </div>
+                  )}
+                  {s.targetPreview && (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-[11px] text-[var(--success)]">
+                        <Icon name="check-circle" className="w-3 h-3" />
+                        {s.targetPreview.columns.length} target columns
                       </div>
-                      <Icon name="check" className="w-5 h-5 text-[var(--success)]" />
+                      {s.customMappings.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--info)]">
+                          <Icon name="layers" className="w-3 h-3" />
+                          {s.customMappings.length} fields auto-mapped
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+              {showMappingCard && (
+              <div className="card p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--primary-light)] flex items-center justify-center">
+                      <Icon name="layers" className="w-4 h-4 text-[var(--primary)]" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-[var(--foreground)]">CUSTOM Field Mapping Review</h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider bg-[var(--muted)] px-2 py-1 rounded">
+                    {s.customMappings.length} / {s.sourceColumns.length} Mapped
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {s.customMappings.map((m, i) => {
+                    const opts = s.targetColumns.filter((t) => t === m.target || !usedTargets.includes(t));
+                    return (
+                      <div key={`${m.source}__${i}`} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--muted)]/50 border border-[var(--border)]">
+                        <span className="text-[11px] font-mono font-medium text-[var(--foreground)] truncate flex-1" title={m.source}>{m.source}</span>
+                        <Icon name="arrow-right" className="w-3 h-3 text-[var(--muted-foreground)] shrink-0" />
+                        <select
+                          value={m.target}
+                          onChange={(e) => s.changeMappingTarget(i, e.target.value)}
+                          className="flex-[2] min-w-0 px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-[11px] focus:border-[var(--primary)] outline-none cursor-pointer"
+                        >
+                          {opts.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => s.removeMapping(i)}
+                          className="p-1.5 rounded hover:bg-[var(--error-light)] text-[var(--muted-foreground)] hover:text-[var(--error)] transition-colors"
+                          title="Remove mapping"
+                        >
+                          <Icon name="xmark" className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {unmatchedSource.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                    <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">
+                      Add New Mapping
+                    </p>
+                    <div className="space-y-2">
+                      {unmatchedSource.map((src) => {
+                        const opts = availableTargets;
+                        const sel = opts.includes(addSelections[src]) ? addSelections[src] : opts[0];
+                        const disabled = opts.length === 0;
+                        return (
+                          <div key={src} className="flex items-center gap-2">
+                            <span className="text-[11px] font-medium text-[var(--muted-foreground)] truncate flex-1" title={src}>{src}</span>
+                            <select
+                              value={sel ?? ""}
+                              disabled={disabled}
+                              onChange={(e) => setAddSelections((p) => ({ ...p, [src]: e.target.value }))}
+                              className="w-full px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-[11px] outline-none"
+                            >
+                              {disabled ? <option value="">No targets</option> : opts.map((t) => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={disabled || !sel}
+                              onClick={() => sel && s.addMapping(src, sel)}
+                              className="px-2 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] text-[11px] font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
               </div>
+            )}
 
-              {/* SQL*Loader Preview & Generate */}
-              {s.file && (
-                <div className="card p-6 mt-5">
-                  <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">2. Preview & Generate</h3>
+            <div className="card p-4">
+              <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-2 uppercase tracking-wider">
+                Output Format
+              </label>
+              <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Output format">
+                {(["csv", "json", "html", "xlsx"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => s.setOutputFormat(f)}
+                    className={`format-btn ${s.outputFormat === f ? "active" : ""}`}
+                    type="button"
+                    role="radio"
+                    aria-checked={s.outputFormat === f}
+                  >
+                    {f.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  {s.preview ? (
-                    <div className="space-y-4">
-                      {/* Columns detected */}
-                      <div>
-                        <p className="text-[11px] text-[var(--muted-foreground)] mb-2">Columns detected ({s.preview.columns.length}):</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {s.preview.columns.map((col) => (
-                            <span key={col} className="px-2 py-0.5 rounded-md bg-[var(--primary-light)] text-[var(--primary)] text-[11px] font-medium">
-                              {col}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+            <button
+              onClick={s.handleGenerateScript}
+              disabled={!s.file || !s.targetFile || s.loading}
+              className="btn-primary w-full h-10"
+              type="button"
+            >
+              {s.loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Icon name="terminal" className="w-3.5 h-3.5" />
+                  Generate Script
+                </span>
+              )}
+            </button>
+          </div>
 
-                      {/* Table name */}
-                      {s.result && (
-                        <div className="p-3 rounded-lg bg-[var(--muted)]">
-                          <p className="text-[11px] text-[var(--muted-foreground)]">Target table name:</p>
-                          <p className="text-sm font-semibold text-[var(--foreground)]">{s.result.table_name}</p>
-                        </div>
-                      )}
+          <div className="lg:col-span-7 space-y-4">
+            {s.errMsg && (
+              <div className="border border-[var(--error)]/30 rounded-lg animate-scale-in" style={{ background: "var(--error-light)" }} role="alert">
+                <div className="p-4 flex items-start gap-3">
+                  <div className="shrink-0">
+                    <Icon name="xmark" className="w-5 h-5 text-[var(--error)]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--error)]">Error</p>
+                    <p className="text-xs text-[var(--error)]/80 mt-0.5">{s.errMsg}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={s.handleGenerateScript}
-                          disabled={s.loading}
-                          className="btn-primary text-sm"
-                        >
-                          {s.loading ? (
-                            <span className="flex items-center gap-2">
-                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              Generating...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <Icon name="terminal" className="w-4 h-4" />
-                              Generate Script
-                            </span>
-                          )}
-                        </button>
+            {s.preview && (
+              <FilePreview
+                filename={s.file?.name || ""} format={s.file?.name.split(".").pop() || "csv"}
+                columns={s.preview.columns} rows={s.preview.rows}
+                rowCount={s.preview.row_count} onClose={() => s.setPreview(null)}
+              />
+            )}
 
-                        {s.result && (
-                          <>
-                            <button
-                              onClick={s.handleDownloadScript}
-                              className="btn-secondary text-sm"
-                            >
-                              <Icon name="download" className="w-4 h-4" />
-                              Download .sh
-                            </button>
-                            <DownloadCommand scriptName={s.result.script_filename} type="bash" />
-                          </>
-                        )}
-                      </div>
-
-                      {/* Result */}
-                      {s.result && (
-                        <div className="p-4 rounded-lg bg-[var(--success-light)] border border-[var(--success)]/30">
-                          <div className="flex items-start gap-3">
-                            <Icon name="check-circle" className="w-5 h-5 text-[var(--success)] shrink-0" />
-                            <div>
-                              <p className="text-sm font-semibold text-[var(--success)]">Script generated successfully!</p>
-                              <p className="text-[11px] text-[var(--success)] mt-0.5">
-                                {s.result.records_count} records • {s.result.columns.length} columns • Table: {s.result.table_name}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+            {(function() {
+              const r = s.result;
+              if (!r) return null;
+              const copyCmd = (cmd: string) => (e: React.MouseEvent<HTMLDivElement>) => {
+                const sel = window.getSelection();
+                if (sel) { sel.selectAllChildren(e.currentTarget); navigator.clipboard?.writeText(cmd); }
+              };
+              return (
+                <div className="card p-5 animate-slide-up">
+                  <div className="flex items-center gap-2.5 mb-4 pb-4 border-b border-[var(--border)]">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--success-light)] flex items-center justify-center">
+                      <Icon name="check-circle" className="w-4 h-4 text-[var(--success)]" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-[var(--foreground)]">Script Generated</h3>
+                      {r.mappings_applied > 0 && (
+                        <p className="text-[11px] text-[var(--muted-foreground)]">{r.mappings_applied} fields mapped &middot; {r.records_count} records</p>
                       )}
                     </div>
-                  ) : (
-                    <button
-                      onClick={s.handlePreview}
-                      disabled={s.previewLoading}
-                      className="btn-secondary text-sm w-full"
-                    >
-                      {s.previewLoading ? (
-                        <span className="flex items-center gap-2">
-                          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          Previewing...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Icon name="eye" className="w-4 h-4" />
-                          Preview Columns
-                        </span>
-                      )}
-                    </button>
-                  )}
+                  </div>
+
+                  <div className="mb-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Icon name="command" className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                      <span className="text-[11px] font-medium text-[var(--muted-foreground)]">Windows (PowerShell)</span>
+                    </div>
+                    <div className="relative">
+                      <div className="terminal-box select-all cursor-pointer hover:opacity-90" onClick={(e) => { const sel = window.getSelection(); if (sel) { sel.selectAllChildren(e.currentTarget); navigator.clipboard?.writeText(r.cmd_windows); } }}>
+                        {r.cmd_windows}
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(r.cmd_windows)}
+                        className="absolute right-2 top-2 p-1.5 rounded bg-[var(--muted)] hover:bg-[var(--muted-foreground)]/20 cursor-pointer transition-colors"
+                        title="Copy command"
+                      >
+                        <svg className="w-3.5 h-3.5 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Icon name="terminal" className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                      <span className="text-[11px] font-medium text-[var(--muted-foreground)]">Mac / Linux (Terminal)</span>
+                    </div>
+                    <div className="relative">
+                      <div className="terminal-box select-all cursor-pointer hover:opacity-90" onClick={(e) => { const sel = window.getSelection(); if (sel) { sel.selectAllChildren(e.currentTarget); navigator.clipboard?.writeText(r.cmd_linux); } }}>
+                        {r.cmd_linux}
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(r.cmd_linux)}
+                        className="absolute right-2 top-2 p-1.5 rounded bg-[var(--muted)] hover:bg-[var(--muted-foreground)]/20 cursor-pointer transition-colors"
+                        title="Copy command"
+                      >
+                        <svg className="w-3.5 h-3.5 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[var(--muted-foreground)]">Click the command or copy button to copy, then paste in terminal.</p>
                 </div>
-              )}
+              );
+            })()}
 
-              {/* SQL*Loader Instructions */}
-              <div className="card p-6 mt-5">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Instructions for Target Bank</h3>
-                <ol className="space-y-2 text-xs text-[var(--muted-foreground)]">
-                  <li className="flex gap-2">
-                    <span className="font-semibold text-[var(--primary)]">1.</span>
-                    Download the generated .sh script
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-semibold text-[var(--primary)]">2.</span>
-                    Update database connection details in the script (DB_USER, DB_PASS, DB_CONNECT)
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-semibold text-[var(--primary)]">3.</span>
-                    Run the script: <code className="px-1.5 py-0.5 rounded bg-[var(--muted)] text-[var(--foreground)]">bash script_name.sh</code>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-semibold text-[var(--primary)]">4.</span>
-                    Check migration.log and migration.bad for any issues
-                  </li>
-                </ol>
+            {!s.result && !s.errMsg && (
+              <div className="card p-8 flex flex-col items-center justify-center text-center min-h-[280px] animate-fade-in">
+                <div className="w-12 h-12 rounded-xl bg-[var(--primary-light)] flex items-center justify-center mb-4">
+                  <Icon name="terminal" className="w-6 h-6 text-[var(--primary)]" />
+                </div>
+                <h2 className="text-sm font-semibold text-[var(--foreground)] mb-1">Ready to Migrate</h2>
+                <p className="text-xs text-[var(--muted-foreground)] max-w-sm leading-relaxed">
+                  Upload a source data file and a target schema sample. The system will auto-map fields and generate terminal commands to run the migration.
+                </p>
               </div>
-            </>
-          )}
-        </main>
-
-        {/* Footer */}
-        <footer className="border-t border-[var(--border)] bg-[var(--card)]/50 mt-auto" role="contentinfo">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[var(--muted-foreground)]">
-            <span className="font-medium">&copy; {new Date().getFullYear()} UN Wallet — Multi-Bank Data Migration Platform v1.0.0</span>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
-                <span className="font-semibold">Operational</span>
-              </span>
-              <span className="hidden sm:inline text-[var(--border)]">|</span>
-              <span className="hidden sm:inline">Phase 1 — Confidential</span>
-            </div>
+            )}
           </div>
-        </footer>
-      </div>
-    </>
+        </div>
+      </main>
+
+      <footer className="border-t border-[var(--border)] bg-[var(--card)]/80">
+        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between text-[11px] text-[var(--muted-foreground)]">
+          <span>&copy; {new Date().getFullYear()} UN Wallet</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+            Operational
+          </span>
+        </div>
+      </footer>
+    </div>
   );
 }
 

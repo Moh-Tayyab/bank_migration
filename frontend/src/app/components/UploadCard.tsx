@@ -2,9 +2,9 @@
 import Icon from "./Icon";
 import type { MigrationHook } from "./hooks/useMigration";
 
-type Props = Pick<MigrationHook, "file" | "dragOver" | "previewLoading" | "inputRef" | "onDrop" | "onFileSelect" | "setDragOver" | "handlePreview">;
+type Props = Pick<MigrationHook, "file" | "dragOver" | "previewLoading" | "inputRef" | "onDrop" | "onFileSelect" | "setDragOver">;
 
-export default function UploadCard({ file, dragOver, previewLoading, inputRef, onDrop, onFileSelect, setDragOver, handlePreview: onPreview }: Props) {
+export default function UploadCard({ file, dragOver, previewLoading, inputRef, onDrop, onFileSelect, setDragOver }: Props) {
   return (
     <section className="card-elevated animate-slide-up delay-75" aria-label="Upload data file">
       <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center gap-2.5">
@@ -34,6 +34,12 @@ export default function UploadCard({ file, dragOver, previewLoading, inputRef, o
               <div className="text-center">
                 <p className="text-sm font-semibold text-[var(--foreground)]">{file.name}</p>
                 <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">{(file.size / 1024).toFixed(1)} KB</p>
+                {previewLoading && (
+                  <p className="text-[10px] text-[var(--primary)] mt-1 flex items-center gap-1 justify-center">
+                    <span className="w-2.5 h-2.5 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                    Auto-previewing...
+                  </p>
+                )}
               </div>
             ) : (
               <div className="text-center">
@@ -45,14 +51,6 @@ export default function UploadCard({ file, dragOver, previewLoading, inputRef, o
             )}
           </div>
         </div>
-        {file && (
-          <div className="mt-3 flex gap-2">
-            <button onClick={onPreview} disabled={previewLoading} className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer" type="button">
-              <Icon name="search" className="w-3.5 h-3.5" />
-              {previewLoading ? "Loading..." : "Preview"}
-            </button>
-          </div>
-        )}
       </div>
     </section>
   );

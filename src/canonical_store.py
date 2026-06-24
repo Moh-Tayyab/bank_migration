@@ -74,28 +74,42 @@ class CanonicalStore:
         """
         self.db.execute(query)
 
+    @staticmethod
+    def _restrict_perms(path) -> None:
+        """Best-effort restriction of secret file perms to owner-only.
+
+        Some filesystems (e.g. Windows drives mounted via WSL DrvFs) cannot
+        apply POSIX permission bits and raise PermissionError on os.chmod.
+        The chmod is hardening only — ignore the failure there rather than
+        aborting startup, since perms are governed by the mount in that case.
+        """
+        try:
+            os.chmod(path, 0o600)
+        except (PermissionError, OSError):
+            logger.warning("Could not chmod %s (filesystem may not support it)", path)
+
     def _generate_key(self) -> str:
         return base64.urlsafe_b64encode(os.urandom(32)).decode()
 
     def _load_or_create_key(self) -> str:
         settings.canonical_store_dir.mkdir(parents=True, exist_ok=True)
         if self._KEY_FILE.exists():
-            os.chmod(self._KEY_FILE, 0o600)
+            self._restrict_perms(self._KEY_FILE)
             return self._KEY_FILE.read_text().strip()
         logger.warning("Auto-generating encryption key — set CANONICAL_ENCRYPTION_KEY env var for production use")
         key = self._generate_key()
         self._KEY_FILE.write_text(key)
-        os.chmod(self._KEY_FILE, 0o600)
+        self._restrict_perms(self._KEY_FILE)
         return key
 
     def _load_or_create_salt(self) -> bytes:
         settings.canonical_store_dir.mkdir(parents=True, exist_ok=True)
         if self._SALT_FILE.exists():
-            os.chmod(self._SALT_FILE, 0o600)
+            self._restrict_perms(self._SALT_FILE)
             return base64.urlsafe_b64decode(self._SALT_FILE.read_text().strip())
         salt = os.urandom(16)
         self._SALT_FILE.write_text(base64.urlsafe_b64encode(salt).decode())
-        os.chmod(self._SALT_FILE, 0o600)
+        self._restrict_perms(self._SALT_FILE)
         return salt
 
     def _derive_key(self, key: str, salt: bytes) -> bytes:

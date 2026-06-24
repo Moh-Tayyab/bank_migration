@@ -346,9 +346,9 @@ async def auto_map_columns(
     request: Request,
     _auth=Depends(verify_api_key),
     file: UploadFile = File(...),
-    target_bank: str = Form("private_individuals"),
+    target_bank: Optional[str] = Form(None),
 ):
-    from .schema_mapper import auto_generate_mappings
+    from src.schema_mapper import auto_generate_mappings
 
     os.makedirs(settings.upload_dir, exist_ok=True)
     safe_filename = os.path.basename(file.filename or "upload")
@@ -373,6 +373,14 @@ async def auto_map_columns(
         detected, records = orchestrator.preview_file(filepath, row_limit=5)
         columns = list(records[0].keys()) if records else []
 
+        if not target_bank:
+            target_bank = orchestrator.detect_target_bank(columns)
+        if not target_bank:
+            raise HTTPException(
+                status_code=400,
+                detail="target_bank not provided and could not be auto-detected from the file",
+            )
+
         mappings = auto_generate_mappings(columns, target_bank)
         mapping_list = [{"source": m.source_field, "target": m.target_field} for m in mappings]
 
@@ -394,6 +402,233 @@ async def auto_map_columns(
         if os.path.exists(filepath):
             os.remove(filepath)
         raise
+
+
+@app.post("/api/schema/upload-target")
+@limiter.limit("10/minute")
+async def upload_target_file(
+    request: Request,
+    _auth=Depends(verify_api_key),
+    file: UploadFile = File(...),
+):
+    """Parse uploaded target file and return its columns for schema inference."""
+    from src.schema_mapper import generate_custom_mappings
+
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    safe_filename = os.path.basename(file.filename or "upload")
+    file_id = str(uuid.uuid4())
+    filepath = os.path.join(settings.upload_dir, f"{file_id}_{safe_filename}")
+
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    try:
+        with open(filepath, "wb") as f:
+            total = 0
+            while chunk := await file.read(1024 * 1024):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb}MB limit")
+                f.write(chunk)
+    except BaseException:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise
+
+    try:
+        detected, records = orchestrator.preview_file(filepath, row_limit=5)
+        target_columns = list(records[0].keys()) if records else []
+        sample_values = records[0] if records else {}
+
+        return {
+            "file_id": file_id,
+            "filename": file.filename,
+            "format": detected,
+            "columns": target_columns,
+            "sample_values": sample_values,
+            "row_count": len(records),
+        }
+    except Exception:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise
+
+
+@app.post("/api/schema/auto-map-custom")
+@limiter.limit("10/minute")
+async def auto_map_custom_columns(
+    request: Request,
+    _auth=Depends(verify_api_key),
+    source_columns: str = Form(...),
+    target_columns: str = Form(...),
+):
+    """Generate auto-mappings between source file columns and target file columns."""
+    from src.schema_mapper import generate_custom_mappings
+
+    import json as _json
+
+    src_cols = _json.loads(source_columns)
+    tgt_cols = _json.loads(target_columns)
+
+    mappings = generate_custom_mappings(src_cols, tgt_cols)
+    mapping_list = [{"source": m.source_field, "target": m.target_field} for m in mappings]
+
+    return {
+        "source_columns": src_cols,
+        "target_columns": tgt_cols,
+        "mappings": mapping_list,
+        "matched": len(mapping_list),
+        "unmatched_source": [c for c in src_cols if c not in [m["source"] for m in mapping_list]],
+        "unmatched_target": [c for c in tgt_cols if c not in [m["target"] for m in mapping_list]],
+    }
+
+
+@app.post("/api/migrate/upload-custom")
+@limiter.limit("10/minute")
+async def migrate_custom_upload(
+    request: Request,
+    _auth=Depends(verify_api_key),
+    source_file: UploadFile = File(...),
+    target_file: UploadFile = File(...),
+    output_format: Optional[str] = Form("json"),
+    mappings: Optional[str] = Form(None),
+):
+    """Migrate data from source file to match target file's schema."""
+    from src.schema_mapper import generate_custom_mappings, register_custom_target
+
+    import json as _json
+
+    os.makedirs(settings.upload_dir, exist_ok=True)
+
+    # Save source file
+    src_id = str(uuid.uuid4())
+    src_safe = os.path.basename(source_file.filename or "source")
+    src_path = os.path.join(settings.upload_dir, f"{src_id}_{src_safe}")
+
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    try:
+        with open(src_path, "wb") as f:
+            total = 0
+            while chunk := await source_file.read(1024 * 1024):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(status_code=413, detail=f"Source file exceeds {settings.max_file_size_mb}MB limit")
+                f.write(chunk)
+    except BaseException:
+        if os.path.exists(src_path):
+            os.remove(src_path)
+        raise
+
+    # Save target file
+    tgt_id = str(uuid.uuid4())
+    tgt_safe = os.path.basename(target_file.filename or "target")
+    tgt_path = os.path.join(settings.upload_dir, f"{tgt_id}_{tgt_safe}")
+
+    try:
+        with open(tgt_path, "wb") as f:
+            total = 0
+            while chunk := await target_file.read(1024 * 1024):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(status_code=413, detail=f"Target file exceeds {settings.max_file_size_mb}MB limit")
+                f.write(chunk)
+    except BaseException:
+        if os.path.exists(tgt_path):
+            os.remove(tgt_path)
+        raise
+
+    try:
+        # Parse both files
+        src_detected, src_records = orchestrator.preview_file(src_path, row_limit=999999)
+        tgt_detected, tgt_records = orchestrator.preview_file(tgt_path, row_limit=5)
+
+        src_columns = list(src_records[0].keys()) if src_records else []
+        tgt_columns = list(tgt_records[0].keys()) if tgt_records else []
+
+        if not src_records:
+            raise HTTPException(status_code=400, detail="Source file contains no records")
+        if not tgt_columns:
+            raise HTTPException(status_code=400, detail="Target file contains no columns")
+
+        # Register custom target schema
+        sample_values = tgt_records[0] if tgt_records else {}
+        custom_bank_name = f"custom_{tgt_id[:8]}"
+        register_custom_target(
+            orchestrator._registry,
+            tgt_columns,
+            sample_values,
+            custom_bank_name,
+        )
+
+        # Use provided mappings or auto-generate
+        if mappings:
+            mapping_list = _json.loads(mappings)
+            from src.models import MappingRule
+            custom_mappings = [
+                MappingRule(
+                    source_field=m["source"],
+                    target_field=m["target"],
+                    transform=m.get("transform", ""),
+                    required=m.get("required", False),
+                    default=m.get("default"),
+                )
+                for m in mapping_list
+            ]
+        else:
+            custom_mappings = generate_custom_mappings(src_columns, tgt_columns)
+
+        # Run migration with custom mappings
+        from src.models import MappingRule, Record
+        from src.pipeline import Pipeline
+        from src.stages import ValidateStage, ParseStage, MapStage, RulesStage, StoreStage, MaskStage
+        from src.rules_engine import build_standard_rules
+        from src.transaction_rollback import TransactionManager
+        from src.audit_logger import AuditLogger
+
+        audit = AuditLogger()
+        pipeline = Pipeline(
+            stages=[
+                ValidateStage(),
+                ParseStage(),
+                MapStage(),
+                RulesStage(engine=build_standard_rules()),
+                StoreStage(),
+                MaskStage(),
+            ],
+            txn=TransactionManager(),
+            audit=audit,
+        )
+
+        # Inject custom mappings into the mapper
+        pipeline._stages[2]._mapper._auto_cache[custom_bank_name] = custom_mappings
+
+        # Run pipeline
+        result = pipeline.run(iter(src_records), "__auto__", custom_bank_name)
+
+        # Generate output
+        if result.success and result.processed > 0:
+            fmt = output_format or "json"
+            from src.output import get_writer
+            writer = get_writer(fmt)
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            output_path = settings.output_dir / f"migration_custom_{timestamp}.{fmt}"
+            settings.output_dir.mkdir(parents=True, exist_ok=True)
+            writer.write(result, str(output_path))
+            result.output_path = str(output_path)
+
+        return _json.loads(result.model_dump_json())
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Custom migration failed")
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
+    finally:
+        # Cleanup temp files
+        for path in [src_path, tgt_path]:
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
 
 
 @app.get("/api/download/{filename}")
@@ -471,17 +706,23 @@ async def preview_file(
 
 @app.post("/api/sqlldr/generate")
 @limiter.limit("10/minute")
-async def generate_sqlldr_script(
+async def generate_migrate_script(
     request: Request,
     _auth=Depends(verify_api_key),
     file: UploadFile = File(...),
     table_name: Optional[str] = Form(None),
+    target_file: Optional[UploadFile] = File(None),
+    mappings: Optional[str] = Form(None),
+    output_format: Optional[str] = Form("csv"),
 ):
     """
-    Generate SQL*Loader shell script with embedded control file and data.
-    The script can be run on target Oracle database to load the uploaded data.
+    Generate a self-contained migration script (PowerShell for Windows,
+    Python for Mac/Linux). Each script reads the embedded source data,
+    applies the column mappings, and writes the output in the requested
+    format. Supported formats: csv, json, html, xlsx.
     """
     import csv
+    import base64
 
     os.makedirs(settings.upload_dir, exist_ok=True)
     os.makedirs(settings.output_dir, exist_ok=True)
@@ -504,202 +745,388 @@ async def generate_sqlldr_script(
             os.remove(filepath)
         raise
 
+    # Parse mappings
+    mapping_list = []
+    if mappings:
+        try:
+            mapping_list = json.loads(mappings)
+        except Exception:
+            mapping_list = []
+
+    col_map = {}
+    for m in mapping_list:
+        src = m.get("source", "")
+        tgt = m.get("target", "")
+        if src and tgt:
+            col_map[src] = tgt
+
     try:
-        # Read CSV directly for SQL*Loader (include all rows)
+        # Read source file
         records = []
         columns = []
+        file_ext = os.path.splitext(safe_filename)[1].lower()
 
-        with open(filepath, "r", newline="", encoding="utf-8") as f:
-            # Try to detect delimiter
-            sample = f.read(1024)
-            f.seek(0)
+        if file_ext in (".xlsx", ".xls"):
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
+                ws = wb.active
+                rows = list(ws.iter_rows(values_only=True))
+                if rows:
+                    columns = [str(c) if c is not None else f"COL_{i}" for i, c in enumerate(rows[0])]
+                    for row in rows[1:]:
+                        records.append({columns[i]: (str(v) if v is not None else None) for i, v in enumerate(row) if i < len(columns)})
+                wb.close()
+            except ImportError:
+                raise HTTPException(status_code=400, detail="Excel support requires openpyxl")
+        elif file_ext == ".json":
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                columns = list(data[0].keys())
+                for item in data:
+                    records.append({k: (str(v) if v is not None else None) for k, v in item.items()})
+        else:
+            raw_bytes = open(filepath, "rb").read()
+            decoded = None
+            for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252", "iso-8859-1", "ascii"):
+                try:
+                    decoded = raw_bytes.decode(enc)
+                    break
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            if decoded is None:
+                decoded = raw_bytes.decode("utf-8", errors="replace")
 
+            import io
+            fio = io.StringIO(decoded)
             sniffer = csv.Sniffer()
             delimiter = ","
             try:
-                delimiter = sniffer.sniff(sample).delimiter
+                delimiter = sniffer.sniff(decoded[:1024]).delimiter
             except Exception:
                 delimiter = ","
-
-            reader = csv.DictReader(f, delimiter=delimiter)
+            reader = csv.DictReader(fio, delimiter=delimiter)
             if reader.fieldnames:
                 columns = list(reader.fieldnames)
-
             for row in reader:
-                # Convert to dict with string values
                 records.append({k: (v if v != "" else None) for k, v in row.items()})
 
         if not records:
             raise HTTPException(status_code=400, detail="No records found in uploaded file")
 
-        # Generate table name if not provided
-        if not table_name:
-            # Use filename for table name
-            base_name = os.path.splitext(safe_filename)[0]
-            table_name = re.sub(r"[^a-zA-Z0-9_]", "_", base_name).upper()[:30]
-            if not table_name or table_name[0].isdigit():
-                table_name = "T_" + table_name
-            if not table_name:
-                table_name = "BANK_MIGRATION_DATA"
+        # --- Security seam (candidate #2): mask PII BEFORE it is embedded. ---
+        # Path A used to base64-embed the raw source file, leaking PII inside the
+        # generated script. We now run every record through SecurityMasker (the same
+        # component the real pipeline's SecurityStage uses) and re-serialize to the
+        # source format, so the embedded payload is safe-by-construction for
+        # csv/json/xlsx alike. See Step 3 of the architecture review.
+        from src.security import SecurityMasker
+        _masker = SecurityMasker()
+        records = [_masker.mask(rec, str(idx)) for idx, rec in enumerate(records)]
 
-        # Detect column types
-        def detect_type(value):
-            if value is None or value == "":
-                return "CHAR(100)"
+        def _serialize_payload(rows, cols, ext):
+            import io as _io, csv as _csv
+            if ext == ".json":
+                return json.dumps(rows, ensure_ascii=False).encode("utf-8")
+            if ext in (".xlsx", ".xls"):
+                import openpyxl
+                wb = openpyxl.Workbook(); ws = wb.active; ws.append(list(cols))
+                for rec in rows:
+                    ws.append([rec.get(c) for c in cols])
+                buf = _io.BytesIO(); wb.save(buf); return buf.getvalue()
+            sio = _io.StringIO()
+            w = _csv.writer(sio); w.writerow(list(cols))
+            for rec in rows:
+                w.writerow([rec.get(c) for c in cols])
+            return sio.getvalue().encode("utf-8")
 
-            # Try to parse as number (CSV returns strings)
-            str_val = str(value).strip()
-
-            # Check for boolean
-            if str_val.lower() in ("true", "false", "yes", "no", "1", "0"):
-                return "CHAR(1)"
-
-            # Check for integer
-            try:
-                int(str_val)
-                return "INTEGER EXTERNAL"
-            except ValueError:
-                pass
-
-            # Check for float
-            try:
-                float(str_val)
-                return "DECIMAL EXTERNAL"
-            except ValueError:
-                pass
-
-            # Check for date patterns
-            if re.match(r"^\d{4}-\d{2}-\d{2}$", str_val):
-                return "DATE 'YYYY-MM-DD'"
-            if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", str_val):
-                return "DATE 'YYYY-MM-DD HH24:MI:SS'"
-
-            # Default to CHAR
-            str_len = len(str_val)
-            if str_len < 50:
-                return f"CHAR({max(str_len, 50)})"
-            elif str_len < 255:
-                return "CHAR(255)"
-            else:
-                return "CHAR(1000)"
-
-        column_defs = []
+        # Target columns
+        target_columns = []
         for col in columns:
-            col_clean = re.sub(r"[^a-zA-Z0-9_]", "_", str(col)).upper()
-            if not col_clean or col_clean[0].isdigit():
-                col_clean = "COL_" + col_clean
-            col_clean = col_clean[:30]
-            # Sample first non-null value for type detection
-            sample_val = None
-            for record in records:
-                if col in record and record[col] is not None:
-                    sample_val = record[col]
-                    break
-            col_type = detect_type(sample_val)
-            column_defs.append(f"  {col_clean} {col_type}")
+            t = col_map.get(col, col)
+            target_columns.append(t)
 
-        # Generate script filename
-        script_filename = f"sqlldr_{file_id}_{table_name}.sh"
-        script_path = os.path.join(settings.output_dir, script_filename)
+        # Read target file columns if provided
+        target_file_columns = []
+        if target_file:
+            tf_path = os.path.join(settings.upload_dir, f"{file_id}_target_{target_file.filename}")
+            with open(tf_path, "wb") as f:
+                while chunk := await target_file.read(1024 * 1024):
+                    f.write(chunk)
+            tf_ext = os.path.splitext(target_file.filename or "")[1].lower()
+            if tf_ext in (".xlsx", ".xls"):
+                import openpyxl
+                wb = openpyxl.load_workbook(tf_path, read_only=True, data_only=True)
+                ws = wb.active
+                rows = list(ws.iter_rows(values_only=True))
+                if rows:
+                    target_file_columns = [str(c) for c in rows[0]]
+                wb.close()
+            elif tf_ext == ".json":
+                with open(tf_path, "r", encoding="utf-8") as f:
+                    td = json.load(f)
+                if isinstance(td, list) and len(td) > 0 and isinstance(td[0], dict):
+                    target_file_columns = list(td[0].keys())
+            else:
+                raw = open(tf_path, "rb").read()
+                dec = None
+                for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
+                    try:
+                        dec = raw.decode(enc)
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+                if dec:
+                    import io
+                    reader = csv.DictReader(io.StringIO(dec))
+                    if reader.fieldnames:
+                        target_file_columns = list(reader.fieldnames)
+            os.remove(tf_path)
 
-        # Escape CSV field
-        def escape_csv(field):
-            if field is None:
-                return ""
-            value = str(field)
-            if any(char in value for char in [",", '"', "\n"]):
-                value = value.replace('"', '""')
-                return f'"{value}"'
-            return value
+        # Build the Python migration script
+        mapping_dict_str = json.dumps(col_map, indent=4) if col_map else "{}"
+        source_file_b64 = ""
+        source_ext = file_ext if file_ext in (".csv", ".json", ".xlsx", ".xls") else ".csv"
 
-        # Write SQL*Loader script
-        script_lines = [
-            "#!/bin/bash",
-            "#",
-            "# SQL*Loader Script for Bank Data Migration",
-            "# Generated by UN Wallet Multi-Bank Data Migration Platform",
-            "#",
-            f"# Source File: {safe_filename}",
-            f"# Target Table: {table_name}",
-            f"# Records: {len(records)}",
-            "#",
-            "# Usage:",
-            "#   1. Update database connection below (replace username/password@database)",
-            "#   2. Run: bash " + script_filename,
-            "#   3. Check log files: migration.log and migration.bad",
-            "#",
-            "",
-            "# ==================== DATABASE CONNECTION ====================",
-            "# Update this with your Oracle database connection details",
-            'DB_USER="your_username"',
-            'DB_PASS="your_password"',
-            'DB_CONNECT="your_database"',
-            "",
-            "# ==================== RUN SQL*LOADER ====================",
-            "",
-            "sqlldr userid=${DB_USER}/${DB_PASS}@${DB_CONNECT} \\",
-            "       control=stdin \\",
-            "       log=migration.log \\",
-            "       bad=migration.bad \\",
-            "       discard=migration.discard <<EOF",
-            "",
-            "OPTIONS (",
-            "    DIRECT=TRUE,",
-            "    BINDSIZE=5000000,",
-            "    ROWS=1000,",
-            "    ERRORS=1000",
-            ")",
-            "",
-            "LOAD DATA",
-            "INFILE *",
-            f"INTO TABLE {table_name}",
-            "TRUNCATE",
-            "FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' TRAILING NULLCOLS",
-            "(",
-            ",\n".join(column_defs),
-            ")",
-            "",
-            "BEGINDATA",
-        ]
+        # Embed the MASKED payload (re-serialized to the source format) so the
+        # generated script never carries raw PII. The Python branch decodes by file
+        # extension, so we preserve the original extension.
+        source_file_b64 = base64.b64encode(_serialize_payload(records, columns, file_ext)).decode("ascii")
 
-        # Add data rows
-        for record in records:
-            row_values = [escape_csv(record.get(col)) for col in columns]
-            script_lines.append(",".join(row_values))
+        source_filename_safe = safe_filename.replace('"', '\\"')
 
-        script_lines.extend(
-            [
-                "EOF",
-                "",
-                "# ==================== STATUS ====================",
-                "echo 'SQL*Loader completed. Check migration.log for details.'",
-                "if [ -f migration.bad ]; then",
-                "    echo 'Rejected records: ' $(wc -l < migration.bad)",
-                "fi",
-            ]
-        )
+        # Determine output format from source extension
+        output_ext = ".csv"
 
-        with open(script_path, "w") as f:
-            f.write("\n".join(script_lines))
+        # Build encoded values for embedding in scripts
+        mapping_json = mapping_dict_str
 
-        # Make executable
+        # For PowerShell: convert Excel/JSON to CSV text before base64 encoding
+        ps_source_b64 = source_file_b64
+        ps_source_ext = source_ext
+        if file_ext in (".xlsx", ".xls"):
+            import io as _io, csv as _csv
+            csv_buffer = _io.StringIO()
+            writer = _csv.writer(csv_buffer)
+            writer.writerow(columns)
+            for rec in records:
+                writer.writerow([rec.get(c, None) for c in columns])
+            ps_csv_data = csv_buffer.getvalue()
+            ps_source_b64 = base64.b64encode(ps_csv_data.encode("utf-8")).decode("ascii")
+            ps_source_ext = ".csv"
+        elif file_ext == ".json":
+            ps_csv_data = ",".join(columns) + "\n"
+            for rec in records:
+                ps_csv_data += ",".join(str(rec.get(c, "") or "") for c in columns) + "\n"
+            ps_source_b64 = base64.b64encode(ps_csv_data.encode("utf-8")).decode("ascii")
+            ps_source_ext = ".csv"
+
+        def to_ps_array(lst):
+            return '@("' + '", "'.join(lst) + '")'
+
+        ps_target_cols = to_ps_array(target_columns)
+        source_columns_json = json.dumps(columns)
+        target_columns_json = json.dumps(target_columns)
+
+        # ---- Output format handling (csv | json | html | xlsx) ----
+        fmt = (output_format or "csv").strip().lower()
+        if fmt not in ("csv", "json", "html", "xlsx"):
+            fmt = "csv"
+
+        # Python write block, embedded verbatim into the generated .py script.
+        # These are plain strings (not f-strings) so their braces are literal.
+        if fmt == "csv":
+            py_write_block = '''    out = os.path.splitext(SOURCE_FILENAME)[0] + "_migrated.csv"
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=TARGET_COLUMNS, extrasaction="ignore")
+        w.writeheader(); w.writerows(mapped)'''
+        elif fmt == "json":
+            py_write_block = '''    out = os.path.splitext(SOURCE_FILENAME)[0] + "_migrated.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(mapped, f, ensure_ascii=False, indent=2)'''
+        elif fmt == "html":
+            py_write_block = '''    def _esc(v): return ("" if v is None else str(v)).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    out = os.path.splitext(SOURCE_FILENAME)[0] + "_migrated.html"
+    parts = ["<table><tr>" + "".join(f"<th>{_esc(c)}</th>" for c in TARGET_COLUMNS) + "</tr>"]
+    for rec in mapped:
+        parts.append("<tr>" + "".join(f"<td>{_esc(rec.get(c))}</td>" for c in TARGET_COLUMNS) + "</tr>")
+    parts.append("</table>")
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("<!doctype html><html><head><meta charset='utf-8'><title>migrated</title></head><body>" + "".join(parts) + "</body></html>")'''
+        else:  # xlsx
+            py_write_block = '''    out = os.path.splitext(SOURCE_FILENAME)[0] + "_migrated.xlsx"
+    try:
+        import openpyxl
+    except ImportError:
+        print("ERROR: xlsx output requires openpyxl. Install with: pip install openpyxl"); sys.exit(1)
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(TARGET_COLUMNS)
+    for rec in mapped:
+        ws.append([rec.get(c) for c in TARGET_COLUMNS])
+    wb.save(out)'''
+
+        # PowerShell write block. PowerShell can't author .xlsx without Excel,
+        # so xlsx falls back to CSV here with a note (use the Python script for xlsx).
+        if fmt == "csv":
+            ps_write_block = '''$outputName = [System.IO.Path]::GetFileNameWithoutExtension($sourceFilename) + "_migrated.csv"
+$mapped | Select-Object $targetColumns | Export-Csv -Path $outputName -NoTypeInformation -Encoding UTF8'''
+        elif fmt == "json":
+            ps_write_block = '''$outputName = [System.IO.Path]::GetFileNameWithoutExtension($sourceFilename) + "_migrated.json"
+$mapped | ConvertTo-Json -Depth 5 | Out-File -FilePath $outputName -Encoding UTF8'''
+        elif fmt == "html":
+            ps_write_block = '''$outputName = [System.IO.Path]::GetFileNameWithoutExtension($sourceFilename) + "_migrated.html"
+$mapped | Select-Object $targetColumns | ConvertTo-Html | Out-File -FilePath $outputName -Encoding UTF8'''
+        else:  # xlsx -> CSV fallback
+            ps_write_block = '''Write-Host "Note: .xlsx is not supported in PowerShell (requires Excel). Wrote CSV instead. For .xlsx output, run the Python script."
+$outputName = [System.IO.Path]::GetFileNameWithoutExtension($sourceFilename) + "_migrated.csv"
+$mapped | Select-Object $targetColumns | Export-Csv -Path $outputName -NoTypeInformation -Encoding UTF8'''
+
+        # ============ POWERSHELL SCRIPT (Windows - no Python needed) ============
+        ps_source_name = os.path.splitext(safe_filename)[0] + ".csv"
+        ps_script = f'''# Migration Script - Generated by UN Wallet
+# Source: {safe_filename} | Records: {len(records)} | Columns: {len(columns)} -> {len(target_columns)} | Output: {fmt}
+
+$dataB64 = @"
+{ps_source_b64}
+"@
+
+$mappingsJson = @'
+{mapping_json}
+'@
+
+$targetColumns = {ps_target_cols}
+$sourceFilename = "{ps_source_name}"
+
+# Decode base64 source data
+$bytes = [Convert]::FromBase64String($dataB64)
+$decoded = [System.Text.Encoding]::UTF8.GetString($bytes)
+
+# Parse CSV
+$records = $decoded | ConvertFrom-Csv
+$colCount = @($records[0].PSObject.Properties).Count
+Write-Host "Source: $($records.Count) records, $colCount columns"
+
+# Parse mappings
+$mappings = $mappingsJson | ConvertFrom-Json
+
+# Apply column mappings
+$mapped = @()
+foreach ($rec in $records) {{
+    $newRec = [PSCustomObject]@{{}}
+    foreach ($prop in $rec.PSObject.Properties) {{
+        $targetCol = if ($mappings.$($prop.Name)) {{ $mappings.$($prop.Name) }} else {{ $prop.Name }}
+        $newRec | Add-Member -NotePropertyName $targetCol -NotePropertyValue $prop.Value
+    }}
+    $mapped += $newRec
+}}
+
+$mappedCount = @($mappings.PSObject.Properties).Count
+Write-Host "Mapped: $mappedCount field(s) renamed"
+
+# Write output ({fmt})
+{ps_write_block}
+
+Write-Host "Output: $outputName"
+Write-Host "Records: $($mapped.Count)"
+Write-Host "Migration complete!"
+'''
+
+        # ============ PYTHON SCRIPT (Mac/Linux - python3 pre-installed) ============
+        py_script = f'''#!/usr/bin/env python3
+"""
+Migration Script - Generated by UN Wallet
+Source: {safe_filename} | Records: {len(records)} | Columns: {len(columns)} -> {len(target_columns)} | Output: {fmt}
+"""
+import csv, json, os, sys, base64, io
+
+MAPPINGS = {mapping_json}
+SOURCE_COLUMNS = {source_columns_json}
+TARGET_COLUMNS = {target_columns_json}
+SOURCE_DATA_B64 = """{source_file_b64}"""
+SOURCE_FILENAME = "{source_filename_safe}"
+
+def decode_source():
+    raw = base64.b64decode(SOURCE_DATA_B64)
+    ext = os.path.splitext(SOURCE_FILENAME)[1].lower()
+    if ext in (".xlsx", ".xls"):
+        import openpyxl; wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        ws = wb.active; rows = list(ws.iter_rows(values_only=True)); wb.close()
+        if not rows: return [], []
+        cols = [str(c) if c is not None else f"COL_{{i}}" for i, c in enumerate(rows[0])]
+        return cols, [{{cols[i]: (str(v) if v is not None else None) for i, v in enumerate(row) if i < len(cols)}} for row in rows[1:]]
+    elif ext == ".json":
+        data = json.loads(raw)
+        if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+            cols = list(data[0].keys())
+            return cols, [{{k: (str(v) if v is not None else None) for k, v in item.items()}} for item in data]
+        return [], []
+    else:
+        decoded = None
+        for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252", "iso-8859-1"):
+            try: decoded = raw.decode(enc); break
+            except: continue
+        if decoded is None: decoded = raw.decode("utf-8", errors="replace")
+        import io; fio = io.StringIO(decoded)
+        try: delimiter = csv.Sniffer().sniff(decoded[:1024]).delimiter
+        except: delimiter = ","
+        reader = csv.DictReader(fio, delimiter=delimiter)
+        cols = list(reader.fieldnames) if reader.fieldnames else []
+        return cols, [dict(row) for row in reader]
+
+def migrate():
+    src_cols, records = decode_source()
+    if not records: print("ERROR: No records found"); sys.exit(1)
+    print(f"Source: {{len(records)}} records, {{len(src_cols)}} columns")
+    mapped = [{{MAPPINGS.get(k, k): v for k, v in rec.items()}} for rec in records]
+    print(f"Mapped: {{len(MAPPINGS)}} field(s) renamed")
+{py_write_block}
+    print(f"Output: {{out}}"); print(f"Records: {{len(mapped)}}"); print("Migration complete!")
+
+if __name__ == "__main__": migrate()
+'''
+
+        # Write both scripts
+        import urllib.parse
+        safe_script_name = os.path.splitext(safe_filename)[0].replace(" ", "_").replace("(", "").replace(")", "")
+        ps_filename = f"migrate_{file_id}_{safe_script_name}.ps1"
+        py_filename = f"migrate_{file_id}_{safe_script_name}.py"
+
+        ps_path = os.path.join(settings.output_dir, ps_filename)
+        py_path = os.path.join(settings.output_dir, py_filename)
+
+        with open(ps_path, "w", encoding="utf-8") as f:
+            f.write(ps_script)
+        with open(py_path, "w", encoding="utf-8") as f:
+            f.write(py_script)
         try:
-            os.chmod(script_path, 0o755)
+            os.chmod(py_path, 0o755)
         except Exception:
             pass
 
+        encoded_ps = urllib.parse.quote(ps_filename)
+        encoded_py = urllib.parse.quote(py_filename)
+
+        # Build the download URL the copy-paste commands point at. Prefer an
+        # explicitly configured PUBLIC_BASE_URL; otherwise fall back to the host
+        # the client actually reached us through (respects proxy headers).
+        base_url = (settings.public_base_url or str(request.base_url)).rstrip("/")
+
         return {
             "success": True,
-            "script_filename": script_filename,
-            "download_url": f"/download/{script_filename}",
-            "table_name": table_name,
-            "records_count": len(records),
-            "columns": columns,
+            "script_filename": py_filename,
+            "download_url": f"/api/download/{encoded_py}",
+            "source_columns": columns,
+            "target_columns": target_columns,
+            "mappings_applied": len(col_map),
             "source_file": safe_filename,
+            "records_count": len(records),
+            "output_format": fmt,
+            "cmd_windows": f'curl -o migrate.ps1 {base_url}/api/download/{encoded_ps} && powershell -ExecutionPolicy Bypass -File migrate.ps1',
+            "cmd_linux": f'curl -o migrate.py {base_url}/api/download/{encoded_py} && python3 migrate.py',
         }
 
     finally:
-        # Clean up uploaded file
         if os.path.exists(filepath):
             try:
                 os.remove(filepath)
